@@ -17,10 +17,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.util.Duration;
 import model.Account;
 
-/**
- * Created by Sheng on 9/29/16.
- * A controller for the profile page
- */
+
 public class ProfileController extends AnchorPane implements Initializable{
 
     @FXML
