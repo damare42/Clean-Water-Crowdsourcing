@@ -11,10 +11,6 @@ import javafx.scene.web.WebView;
 import java.net.URL;
 import java.util.ResourceBundle;
 
-/**
- * Created by Sheng on 9/19/16.
- * A controller for the app view
- */
 public class AppViewController implements Initializable {
     @FXML
     private WebView webView;
