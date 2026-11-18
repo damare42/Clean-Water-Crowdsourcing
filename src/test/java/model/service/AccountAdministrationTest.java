@@ -15,10 +15,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import testutil.FailingSecurityLogRepository;
 import testutil.MutableClock;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -132,6 +138,92 @@ class AccountAdministrationTest {
         assertFalse(accounts.isBanned("alice"));
         assertTrue(accounts.existsById("alice"));
         assertEquals(3, events.countAfter(SecurityEventType.PERMISSION_DENIED, "", Instant.EPOCH));
+    }
+
+    /**
+     * @return a service whose security log cannot be written
+     */
+    private AccountService serviceWithFailingLog(FailingSecurityLogRepository failing) {
+        SecurityLog broken = new SecurityLog(failing,
+                new MutableClock(Instant.parse("2026-03-01T10:00:00Z")));
+        return new AccountService(accounts, new AccessControl(broken), broken);
+    }
+
+    @Test
+    void banStandsWhenTheLogCannotBeWrittenAndGoesToTheApplicationLog() {
+        FailingSecurityLogRepository failing = new FailingSecurityLogRepository();
+        AccountService broken = serviceWithFailingLog(failing);
+        Logger logger = Logger.getLogger(SecurityLog.class.getName());
+        List<LogRecord> records = new ArrayList<>();
+        Handler handler = new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                records.add(record);
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        logger.addHandler(handler);
+        try {
+            broken.setBanned(root, "alice", true);
+        } finally {
+            logger.removeHandler(handler);
+        }
+
+        assertTrue(accounts.isBanned("alice"));
+        assertEquals(1, failing.appendAttempts());
+        LogRecord severe = records.stream().filter(r -> r.getLevel() == Level.SEVERE)
+                .findFirst().orElseThrow();
+        assertTrue(severe.getMessage().contains("ACCOUNT_BANNED"), severe.getMessage());
+        assertTrue(severe.getMessage().contains("actor=Root"), severe.getMessage());
+        assertTrue(severe.getMessage().contains("subject=Alice"), severe.getMessage());
+        assertEquals(FailingSecurityLogRepository.MESSAGE, severe.getThrown().getMessage());
+    }
+
+    @Test
+    void unbanStandsWhenTheLogCannotBeWritten() {
+        accounts.setBanned("alice", true);
+        FailingSecurityLogRepository failing = new FailingSecurityLogRepository();
+
+        serviceWithFailingLog(failing).setBanned(root, "alice", false);
+
+        assertFalse(accounts.isBanned("alice"));
+        assertEquals(1, failing.appendAttempts());
+    }
+
+    @Test
+    void deleteStandsWhenTheLogCannotBeWritten() {
+        FailingSecurityLogRepository failing = new FailingSecurityLogRepository();
+
+        serviceWithFailingLog(failing).deleteAccount(root, "alice");
+
+        assertFalse(accounts.existsById("alice"));
+        assertEquals(1, failing.appendAttempts());
+    }
+
+    @Test
+    void unknownTargetsAreReportedAndNothingIsLoggedWhenTheLogCannotBeWritten() {
+        FailingSecurityLogRepository failing = new FailingSecurityLogRepository();
+        AccountService broken = serviceWithFailingLog(failing);
+
+        assertEquals(AccountService.MSG_NO_SUCH_ACCOUNT, assertThrows(IllegalArgumentException.class,
+                () -> broken.setBanned(root, "ghost", true)).getMessage());
+        assertEquals(AccountService.MSG_NO_SUCH_ACCOUNT, assertThrows(IllegalArgumentException.class,
+                () -> broken.deleteAccount(root, "ghost")).getMessage());
+        assertEquals(0, failing.appendAttempts());
+    }
+
+    @Test
+    void unknownTargetsLogNothing() {
+        assertThrows(IllegalArgumentException.class, () -> service.setBanned(root, "ghost", false));
+        assertThrows(IllegalArgumentException.class, () -> service.deleteAccount(root, "ghost"));
+        assertTrue(events.findNewestFirst(10).isEmpty());
     }
 
     @Test

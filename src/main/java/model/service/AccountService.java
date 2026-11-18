@@ -108,7 +108,8 @@ public final class AccountService {
         if (!accounts.setBanned(id, banned)) {
             throw new IllegalArgumentException(MSG_NO_SUCH_ACCOUNT);
         }
-        log.record(banned ? SecurityEventType.ACCOUNT_BANNED : SecurityEventType.ACCOUNT_UNBANNED,
+        log.recordAfterChange(
+                banned ? SecurityEventType.ACCOUNT_BANNED : SecurityEventType.ACCOUNT_UNBANNED,
                 actor.getId(), id, "");
         LOGGER.log(Level.INFO, "{0} {1} account {2}",
                 new Object[]{actor.getId(), banned ? "banned" : "unbanned", id});
@@ -133,7 +134,7 @@ public final class AccountService {
         if (target.isEmpty() || !accounts.delete(targetId)) {
             throw new IllegalArgumentException(MSG_NO_SUCH_ACCOUNT);
         }
-        log.record(SecurityEventType.ACCOUNT_DELETED, actor.getId(), target.get().getId(),
+        log.recordAfterChange(SecurityEventType.ACCOUNT_DELETED, actor.getId(), target.get().getId(),
                 target.get().getType().name());
         LOGGER.log(Level.INFO, "{0} deleted account {1}", new Object[]{actor.getId(), target.get().getId()});
     }

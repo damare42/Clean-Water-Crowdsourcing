@@ -58,9 +58,13 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
         this.application = application;
         username.setText(application.getLoggedAccount().getId());
         try {
-            number.setText(String.valueOf(application.getContext().getReportService().nextReportNumber()));
+            number.setText(String.valueOf(application.getContext().getReportService()
+                    .nextReportNumber(application.getLoggedAccount())));
         } catch (DataAccessException e) {
             LOGGER.log(Level.SEVERE, "Could not read the next report number", e);
+            number.setText("?");
+        } catch (PermissionDeniedException e) {
+            LOGGER.log(Level.WARNING, "Not allowed to see the next report number: {0}", e.getMessage());
             number.setText("?");
         }
     }

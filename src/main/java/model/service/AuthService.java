@@ -23,10 +23,13 @@ import java.util.logging.Logger;
  * surrounding whitespace.
  * <p>
  * Every login attempt, registration and administrator creation is written to the
- * {@link SecurityLog}. Login attempts are recorded under the attempted id in its
- * normalized form ({@link Validation#idKey}). Repeated failures lock an id for a while,
- * as set by a {@link LockoutPolicy}; locks are worked out from the security log, so
- * they survive a restart of the app.
+ * {@link SecurityLog}. If a login event cannot be written, the login is refused.
+ * Registration and administrator creation save the account first and then record it;
+ * if the record cannot be written, the account stands and the event goes to the
+ * application log (java.util.logging, SEVERE) instead. Login attempts are recorded under
+ * the attempted id in its normalized form ({@link Validation#idKey}). Repeated failures
+ * lock an id for a while, as set by a {@link LockoutPolicy}; locks are worked out from
+ * the security log, so they survive a restart of the app.
  */
 public final class AuthService {
 
@@ -101,7 +104,7 @@ public final class AuthService {
         } catch (DuplicateKeyException e) {
             throw new IllegalArgumentException(Validation.MSG_ID_TAKEN, e);
         }
-        log.record(SecurityEventType.REGISTRATION, account.getId(), account.getId(), type.name());
+        log.recordAfterChange(SecurityEventType.REGISTRATION, account.getId(), account.getId(), type.name());
         LOGGER.log(Level.INFO, "Registered account {0} ({1})",
                 new Object[]{account.getId(), account.getType()});
         return account;
@@ -147,7 +150,8 @@ public final class AuthService {
         if (!stored) {
             throw new IllegalArgumentException(MSG_ADMIN_EXISTS);
         }
-        log.record(SecurityEventType.ADMIN_CREATED, "", admin.getId(), "first administrator (start-up)");
+        log.recordAfterChange(SecurityEventType.ADMIN_CREATED, "", admin.getId(),
+                "first administrator (start-up)");
         LOGGER.log(Level.INFO, "Created the first administrator account {0}", admin.getId());
         return admin;
     }

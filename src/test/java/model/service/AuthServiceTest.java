@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import testutil.FailingSecurityLogRepository;
 
 import java.time.Clock;
 import java.util.List;
@@ -54,6 +55,46 @@ class AuthServiceTest {
     private Account register(String id, AccountType type, String password) {
         return auth.register(id, type, "First", "Last", "f@example.com", "f@example.com",
                 pw(password), pw(password));
+    }
+
+    private AuthService authServiceWithFailingLog(FailingSecurityLogRepository failing) {
+        return new AuthService(accounts, hasher, new SecurityLog(failing, Clock.systemUTC()),
+                LockoutPolicy.DEFAULT);
+    }
+
+    @Test
+    void registrationStandsWhenTheLogCannotBeWritten() {
+        FailingSecurityLogRepository failing = new FailingSecurityLogRepository();
+
+        Account account = authServiceWithFailingLog(failing).register("alice", AccountType.User,
+                "Alice", "Smith", "a@example.com", "a@example.com", pw("secret1"), pw("secret1"));
+
+        assertEquals("alice", account.getId());
+        assertTrue(accounts.existsById("alice"));
+        assertEquals(1, failing.appendAttempts());
+    }
+
+    @Test
+    void firstAdministratorStandsWhenTheLogCannotBeWritten() {
+        FailingSecurityLogRepository failing = new FailingSecurityLogRepository();
+        AuthService broken = authServiceWithFailingLog(failing);
+
+        Account admin = broken.createFirstAdministrator("root", "Root", "Admin", "r@example.com",
+                "r@example.com", pw("secret1"), pw("secret1"));
+
+        assertEquals(AccountType.Admin, admin.getType());
+        assertTrue(broken.hasAdministrator());
+        assertEquals(1, failing.appendAttempts());
+    }
+
+    @Test
+    void loginIsRefusedWhenTheLogCannotBeWritten() {
+        register("alice", AccountType.User, "secret1");
+        AuthService broken = authServiceWithFailingLog(new FailingSecurityLogRepository());
+
+        assertThrows(DataAccessException.class, () -> broken.authenticate("alice", pw("secret1")));
+        assertThrows(DataAccessException.class, () -> broken.authenticate("alice", pw("wrong11")));
+        assertThrows(DataAccessException.class, () -> broken.authenticate("ghost", pw("secret1")));
     }
 
     @Test

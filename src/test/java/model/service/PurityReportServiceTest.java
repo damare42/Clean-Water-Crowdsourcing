@@ -4,6 +4,7 @@ import model.Account;
 import model.AccountType;
 import model.GeoPoint;
 import model.MonthlyAverage;
+import model.Permission;
 import model.PurityHistory;
 import model.PurityMetric;
 import model.Validation;
@@ -11,6 +12,7 @@ import model.WaterPurityCondition;
 import model.WaterPurityReport;
 import model.persistence.InMemoryPurityReportRepository;
 import model.persistence.InMemorySecurityLogRepository;
+import model.security.SecurityEvent;
 import model.security.SecurityEventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,7 +68,7 @@ class PurityReportServiceTest {
         assertEquals("wendy", first.getReporter());
         assertEquals(Instant.parse("2016-10-11T12:30:00Z"), first.getReportedAt());
         assertEquals(2, second.getReportNumber());
-        assertEquals(3, service.nextReportNumber());
+        assertEquals(3, service.nextReportNumber(worker));
         assertEquals(List.of(first, second), service.listReports(worker));
         assertEquals(Optional.of(second), service.findReport(manager, 2));
     }
@@ -79,7 +81,7 @@ class PurityReportServiceTest {
                 () -> service.submit(worker, ATLANTA, null, 1, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> service.submit(worker, null, WaterPurityCondition.Safe, 1, 0));
-        assertEquals(1, service.nextReportNumber());
+        assertEquals(1, service.nextReportNumber(worker));
     }
 
     @ParameterizedTest
@@ -93,8 +95,31 @@ class PurityReportServiceTest {
         assertThrows(PermissionDeniedException.class, () -> service.findReport(actor, 1));
         assertThrows(PermissionDeniedException.class,
                 () -> service.history(actor, ATLANTA, 1, 2016, PurityMetric.Virus));
-        assertEquals(1, service.nextReportNumber());
+        assertEquals(1, service.nextReportNumber(worker));
         assertEquals(4, events.countAfter(SecurityEventType.PERMISSION_DENIED, "", Instant.EPOCH));
+    }
+
+    @Test
+    void nextReportNumberNeedsSubmitPermission() {
+        service.submit(worker, ATLANTA, WaterPurityCondition.Safe, 0, 0);
+        Account user = Account.create(AccountType.User, "ursula", "Ur", "Sula", "u@example.com");
+
+        PermissionDeniedException userDenied = assertThrows(PermissionDeniedException.class,
+                () -> service.nextReportNumber(user));
+        assertEquals(Permission.SUBMIT_PURITY_REPORT, userDenied.getPermission());
+        SecurityEvent userEvent = events.findNewestFirst(1).get(0);
+        assertEquals(SecurityEventType.PERMISSION_DENIED, userEvent.type());
+        assertEquals("ursula", userEvent.actor());
+        assertEquals("User lacks SUBMIT_PURITY_REPORT", userEvent.detail());
+
+        assertThrows(PermissionDeniedException.class, () -> service.nextReportNumber(null));
+        SecurityEvent nobodyEvent = events.findNewestFirst(1).get(0);
+        assertEquals(SecurityEventType.PERMISSION_DENIED, nobodyEvent.type());
+        assertEquals("not logged in lacks SUBMIT_PURITY_REPORT", nobodyEvent.detail());
+        assertEquals(2, events.countAfter(SecurityEventType.PERMISSION_DENIED, "", Instant.EPOCH));
+
+        assertEquals(2, service.nextReportNumber(worker));
+        assertEquals(2, events.findNewestFirst(10).size(), "allowed calls are not logged");
     }
 
     @Test

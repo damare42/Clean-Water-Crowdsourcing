@@ -51,12 +51,17 @@ public class CreateAdminController implements Initializable {
     private Main application;
     private Stage dialogStage;
     private Account created;
+    /** True while the administrator is being created; the window cannot be closed then. */
+    private boolean busy;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
     }
 
     /**
+     * Also stops the window from being closed (for example with its close button) while
+     * the administrator is being created.
+     *
      * @param application the running application
      * @param dialogStage the window this controller is shown in
      * @param adminId the id of the administrator to create
@@ -65,6 +70,11 @@ public class CreateAdminController implements Initializable {
         this.application = application;
         this.dialogStage = dialogStage;
         id.setText(adminId);
+        dialogStage.setOnCloseRequest(event -> {
+            if (busy) {
+                event.consume();
+            }
+        });
     }
 
     /**
@@ -121,6 +131,7 @@ public class CreateAdminController implements Initializable {
     }
 
     private void setBusy(boolean busy) {
+        this.busy = busy;
         createButton.setDisable(busy);
         cancelButton.setDisable(busy);
     }

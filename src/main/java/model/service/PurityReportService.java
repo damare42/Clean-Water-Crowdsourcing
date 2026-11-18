@@ -95,10 +95,13 @@ public final class PurityReportService {
     }
 
     /**
+     * @param actor the logged-in account; needs {@link Permission#SUBMIT_PURITY_REPORT}
      * @return the number the next submitted purity report will get, if no other
      *         report is submitted first
+     * @throws PermissionDeniedException if the actor may not submit purity reports
      */
-    public int nextReportNumber() {
+    public int nextReportNumber(Account actor) {
+        access.require(actor, Permission.SUBMIT_PURITY_REPORT);
         return reports.nextReportNumber();
     }
 

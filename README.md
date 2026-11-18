@@ -194,6 +194,9 @@ this, which is the same person who could read or replace the database file anywa
 - There are no database credentials: SQLite is a local file.
 - Each account type has a fixed set of permissions; see
   [Roles and permissions](#roles-and-permissions).
+- Permissions are checked against the account as it was loaded at login. If another
+  copy of the app using the same database file bans or deletes the account, that takes
+  effect at its next login. Running two copies on one database is not supported.
 - Logins of banned accounts are refused. Whether an account is banned is only told to
   someone who gave its correct password; a wrong password gives the same "Invalid log
   in" message as an unknown id, so the login form does not reveal which ids exist or are
@@ -246,10 +249,17 @@ can read (**Security Log** page, newest first):
 | Permission denied     | an account, or nobody, tries something its type does not allow      |
 
 Login attempts are recorded under the attempted id in normalized form (trimmed, lower
-case). Passwords are never recorded. Text is cut to 200 characters and control
-characters are replaced, so the login form cannot be used to flood or garble the log.
-If an event cannot be written, the action it records fails (a login is then refused);
-only permission denials, which are refused anyway, go ahead.
+case). Passwords are never recorded. The id field is recorded as typed (normalized),
+including ids that do not exist, so a password typed into the id field by mistake ends
+up in the log, where administrators can read it. Text is cut to 200 characters and
+control characters are replaced, so the login form cannot be used to flood or garble
+the log.
+
+If a login event cannot be written, the login is refused. Registration, administrator
+creation, ban, unban and delete save the change first and then record it. If the
+record cannot be written, the change stands and the event goes to the application log
+(java.util.logging, SEVERE) instead. Permission denials are refused whether or not they
+can be recorded.
 
 ## Project layout
 

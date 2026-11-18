@@ -17,10 +17,14 @@ import java.util.logging.Logger;
 
 /**
  * Writes and reads the security log: logins, registrations, administrator actions and
- * permission denials. Events are stamped with the injected clock. Writing an event
- * that cannot be saved throws {@link DataAccessException}, so security-relevant
- * actions fail rather than go unrecorded (except permission denials, which are
- * refused anyway; see {@link AccessControl}).
+ * permission denials. Events are stamped with the injected clock.
+ * <p>
+ * If a login event cannot be written, the login is refused ({@link #record} throws
+ * {@link DataAccessException}). Registration, administrator creation, ban, unban and
+ * delete save the change first and then record it with {@link #recordAfterChange}: if
+ * the record cannot be written, the change stands and the event goes to the application
+ * log (java.util.logging, SEVERE) instead. Permission denials are refused whether or not
+ * they can be recorded (see {@link AccessControl}).
  */
 public final class SecurityLog {
 
@@ -63,6 +67,25 @@ public final class SecurityLog {
         LOGGER.log(Level.FINE, "Security event {0}: actor={1} subject={2} {3}",
                 new Object[]{type, event.actor(), event.subject(), event.detail()});
         return event;
+    }
+
+    /**
+     * Records an event for a change that has already been saved. If the event cannot be
+     * saved, the failure is written to the application log at SEVERE, with the event's
+     * details, and this returns normally: the change stands.
+     *
+     * @param type what happened
+     * @param actor the id of the account that acted, or null
+     * @param subject the id acted on, or null
+     * @param detail more information, or null; never a password
+     */
+    public void recordAfterChange(SecurityEventType type, String actor, String subject, String detail) {
+        try {
+            record(type, actor, subject, detail);
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Could not write security event " + type.name() + ": actor=" + actor
+                    + " subject=" + subject + " detail=" + detail, e);
+        }
     }
 
     /**

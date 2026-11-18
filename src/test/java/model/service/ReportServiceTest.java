@@ -9,6 +9,8 @@ import model.WaterSourceReport;
 import model.WaterSourceType;
 import model.persistence.InMemoryReportRepository;
 import model.persistence.InMemorySecurityLogRepository;
+import model.security.SecurityEvent;
+import model.security.SecurityEventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +32,7 @@ class ReportServiceTest {
     private static final Instant NOW = Instant.parse("2016-10-11T12:30:00Z");
 
     private InMemoryReportRepository reports;
+    private InMemorySecurityLogRepository events;
     private ReportService service;
     private Account alice;
 
@@ -37,8 +40,8 @@ class ReportServiceTest {
     void setUp() {
         reports = new InMemoryReportRepository();
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        service = new ReportService(reports, clock,
-                new AccessControl(new SecurityLog(new InMemorySecurityLogRepository(), clock)));
+        events = new InMemorySecurityLogRepository();
+        service = new ReportService(reports, clock, new AccessControl(new SecurityLog(events, clock)));
         alice = Account.create(AccountType.User, "alice", "Alice", "Smith", "a@example.com");
     }
 
@@ -52,7 +55,7 @@ class ReportServiceTest {
 
     @Test
     void numberingStartsAtOne() {
-        assertEquals(1, service.nextReportNumber());
+        assertEquals(1, service.nextReportNumber(alice));
         assertTrue(service.listReports(alice).isEmpty());
     }
 
@@ -67,7 +70,7 @@ class ReportServiceTest {
         assertEquals(NOW, first.getReportedAt());
         assertEquals("2016/10/11", first.getDate(ZoneOffset.UTC));
         assertEquals("12:30", first.getTime(ZoneOffset.UTC));
-        assertEquals(3, service.nextReportNumber());
+        assertEquals(3, service.nextReportNumber(alice));
         assertEquals(List.of(first, second), service.listReports(alice));
         assertEquals(List.of(first, second), reports.findAll());
     }
@@ -81,7 +84,7 @@ class ReportServiceTest {
                 () -> service.submit(alice, 0, 0, null, WaterSourceCondition.Clear));
 
         assertTrue(reports.findAll().isEmpty());
-        assertEquals(1, service.nextReportNumber());
+        assertEquals(1, service.nextReportNumber(alice));
     }
 
     @ParameterizedTest
@@ -106,7 +109,7 @@ class ReportServiceTest {
         assertEquals(AccountType.Admin, e.getAccountType());
         assertEquals("Admin accounts are not allowed to submit source report", e.getMessage());
         assertEquals(1, service.listReports(admin).size());
-        assertEquals(2, service.nextReportNumber());
+        assertEquals(2, service.nextReportNumber(alice));
     }
 
     @Test
@@ -120,6 +123,29 @@ class ReportServiceTest {
         assertEquals("You must be logged in to submit source report", submitDenied.getMessage());
         assertEquals(Permission.VIEW_SOURCE_REPORTS, listDenied.getPermission());
         assertTrue(reports.findAll().isEmpty());
+    }
+
+    @Test
+    void nextReportNumberNeedsSubmitPermission() {
+        submit(alice);
+        Account admin = account(AccountType.Admin);
+
+        PermissionDeniedException adminDenied = assertThrows(PermissionDeniedException.class,
+                () -> service.nextReportNumber(admin));
+        assertEquals(Permission.SUBMIT_SOURCE_REPORT, adminDenied.getPermission());
+        SecurityEvent adminEvent = events.findNewestFirst(1).get(0);
+        assertEquals(SecurityEventType.PERMISSION_DENIED, adminEvent.type());
+        assertEquals(admin.getId(), adminEvent.actor());
+        assertEquals("Admin lacks SUBMIT_SOURCE_REPORT", adminEvent.detail());
+
+        assertThrows(PermissionDeniedException.class, () -> service.nextReportNumber(null));
+        SecurityEvent nobodyEvent = events.findNewestFirst(1).get(0);
+        assertEquals(SecurityEventType.PERMISSION_DENIED, nobodyEvent.type());
+        assertEquals("not logged in lacks SUBMIT_SOURCE_REPORT", nobodyEvent.detail());
+        assertEquals(2, events.countAfter(SecurityEventType.PERMISSION_DENIED, "", Instant.EPOCH));
+
+        assertEquals(2, service.nextReportNumber(account(AccountType.User)));
+        assertEquals(2, events.findNewestFirst(10).size(), "allowed calls are not logged");
     }
 
     @Test

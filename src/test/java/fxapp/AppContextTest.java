@@ -63,7 +63,7 @@ class AppContextTest {
             assertTrue(second.getAuthService().login("alice", pw("wrong12")).isEmpty());
             assertFalse(second.getAuthService().isIdAvailable("ALICE"));
             assertEquals(List.of(report), second.getReportService().listReports(alice));
-            assertEquals(2, second.getReportService().nextReportNumber());
+            assertEquals(2, second.getReportService().nextReportNumber(alice));
         }
     }
 
@@ -104,7 +104,7 @@ class AppContextTest {
             second.getAccountService().setBanned(root, "wendy", false);
             Account wendy = second.getAuthService().login("wendy", pw("secret1")).orElseThrow();
             assertEquals(1, second.getPurityReportService().listReports(wendy).size());
-            assertEquals(2, second.getPurityReportService().nextReportNumber());
+            assertEquals(2, second.getPurityReportService().nextReportNumber(wendy));
         }
     }
 }

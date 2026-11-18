@@ -52,3 +52,5 @@ REST server + web/mobile client so reports are actually shared between users.
 - [x] Phase 1
 - [x] Phase 2
 - [x] Phase 3
+- [x] Cleanup (pre-PR polish: security-log wording and fallback, report-number permission check, admin-dialog close guard, docs)
+- [ ] Phase 4 (decision pending)

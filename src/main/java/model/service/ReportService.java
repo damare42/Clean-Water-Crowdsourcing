@@ -78,10 +78,13 @@ public final class ReportService {
     }
 
     /**
+     * @param actor the logged-in account; needs {@link Permission#SUBMIT_SOURCE_REPORT}
      * @return the number the next submitted report will get, if no other report is
      *         submitted first
+     * @throws PermissionDeniedException if the actor may not submit source reports
      */
-    public int nextReportNumber() {
+    public int nextReportNumber(Account actor) {
+        access.require(actor, Permission.SUBMIT_SOURCE_REPORT);
         return reports.nextReportNumber();
     }
 }

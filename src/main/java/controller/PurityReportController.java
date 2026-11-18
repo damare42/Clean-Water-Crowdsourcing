@@ -64,9 +64,13 @@ public class PurityReportController implements Initializable, Page {
         this.application = application;
         username.setText(String.valueOf(application.getLoggedAccount()));
         try {
-            number.setText(String.valueOf(application.getContext().getPurityReportService().nextReportNumber()));
+            number.setText(String.valueOf(application.getContext().getPurityReportService()
+                    .nextReportNumber(application.getLoggedAccount())));
         } catch (DataAccessException e) {
             LOGGER.log(Level.SEVERE, "Could not read the next purity report number", e);
+            number.setText("?");
+        } catch (PermissionDeniedException e) {
+            LOGGER.log(Level.WARNING, "Not allowed to see the next purity report number: {0}", e.getMessage());
             number.setText("?");
         }
     }
