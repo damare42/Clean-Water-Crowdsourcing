@@ -1,5 +1,8 @@
 package model;
 
+import java.nio.CharBuffer;
+import java.util.Arrays;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -19,8 +22,8 @@ public final class Validation {
     public static final double MIN_LONGITUDE = -180.0;
     public static final double MAX_LONGITUDE = 180.0;
 
-    public static final String MSG_ID_TOO_SHORT =
-            "Username has to be at least " + MIN_ID_LENGTH + " characters";
+    public static final String MSG_INVALID_ID =
+            "Username must be at least " + MIN_ID_LENGTH + " characters and contain no spaces";
     public static final String MSG_ID_TAKEN = "Username is already taken";
     public static final String MSG_ACCOUNT_TYPE_REQUIRED = "Please select an account type";
     public static final String MSG_INVALID_NAME =
@@ -43,6 +46,10 @@ public final class Validation {
             "^[_A-Za-z0-9-]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$");
     private static final Pattern NAME = Pattern.compile("[A-Za-z]+");
     private static final Pattern PASSWORD = Pattern.compile("[A-Za-z0-9]{" + MIN_PASSWORD_LENGTH + ",}");
+    private static final Pattern ID = Pattern.compile("\\S{" + MIN_ID_LENGTH + ",}",
+            Pattern.UNICODE_CHARACTER_CLASS);
+    /** Plain decimal numbers only: no exponents, hex, type suffixes, NaN or Infinity. */
+    private static final Pattern DECIMAL = Pattern.compile("[+-]?(\\d+(\\.\\d*)?|\\.\\d+)");
 
     private Validation() {
     }
@@ -73,11 +80,41 @@ public final class Validation {
     }
 
     /**
-     * @param id the account id (username) to check
-     * @return true if the id has at least {@value #MIN_ID_LENGTH} characters
+     * Same as {@link #isValidPassword(String)} without copying the password into a String.
+     *
+     * @param password the password to check
+     * @return true if the password is valid
+     */
+    public static boolean isValidPassword(char[] password) {
+        return password != null && PASSWORD.matcher(CharBuffer.wrap(password)).matches();
+    }
+
+    /**
+     * @param id the account id (username) to check; surrounding whitespace is ignored
+     * @return true if the trimmed id has at least {@value #MIN_ID_LENGTH} characters
+     *         and contains no whitespace
      */
     public static boolean isValidId(String id) {
-        return id != null && id.length() >= MIN_ID_LENGTH;
+        return id != null && ID.matcher(id.strip()).matches();
+    }
+
+    /**
+     * @param id an account id as entered
+     * @return the id without surrounding whitespace, or null if the id is null
+     */
+    public static String normalizeId(String id) {
+        return id == null ? null : id.strip();
+    }
+
+    /**
+     * Ids are unique ignoring case. This is the key under which an id is stored
+     * and looked up.
+     *
+     * @param id an account id as entered
+     * @return the stripped id in lower case, or null if the id is null
+     */
+    public static String idKey(String id) {
+        return id == null ? null : id.strip().toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -127,7 +164,7 @@ public final class Validation {
     }
 
     private static double parseNumber(String text, String message) {
-        if (text == null || text.isBlank()) {
+        if (text == null || !DECIMAL.matcher(text.trim()).matches()) {
             throw new IllegalArgumentException(message);
         }
         try {
@@ -156,17 +193,18 @@ public final class Validation {
     }
 
     /**
-     * Checks a registration form. Does not check whether the id is already taken;
-     * see {@link Authenticator#register}.
+     * Checks a registration form. Does not check whether the id is already taken
+     * or whether the account type may be self-registered; see
+     * {@code model.service.AuthService#register}.
      *
      * @return the first validation error, or empty if the form is valid
      */
     public static Optional<String> validateRegistration(String id, AccountType type,
                                                         String fname, String lname,
                                                         String email, String emailConfirm,
-                                                        String password, String passwordConfirm) {
+                                                        char[] password, char[] passwordConfirm) {
         if (!isValidId(id)) {
-            return Optional.of(MSG_ID_TOO_SHORT);
+            return Optional.of(MSG_INVALID_ID);
         }
         if (type == null) {
             return Optional.of(MSG_ACCOUNT_TYPE_REQUIRED);
@@ -181,7 +219,7 @@ public final class Validation {
         if (!isValidPassword(password)) {
             return Optional.of(MSG_INVALID_PASSWORD);
         }
-        if (!password.equals(passwordConfirm)) {
+        if (!Arrays.equals(password, passwordConfirm)) {
             return Optional.of(MSG_PASSWORD_MISMATCH);
         }
         return Optional.empty();

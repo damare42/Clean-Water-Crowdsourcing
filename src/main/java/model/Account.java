@@ -1,87 +1,81 @@
 package model;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Created by Sheng on 9/27/16.
  * Represents a single account in the system.
+ * <p>
+ * The role of an account is defined only by its subclass ({@link User},
+ * {@link Worker}, {@link Manager} or {@link Admin}); {@link #getType()} is derived
+ * from it and cannot be changed. Accounts are created with {@link #create}; the id
+ * is fixed once created. Accounts are not stored anywhere by themselves; see
+ * {@code model.service.AuthService} for registration and persistence.
  */
-public class Account {
+public abstract class Account {
 
-    /**
-     * All registered accounts, keyed by id.
-     */
-    public static final Map<String, Account> accountList = new HashMap<>();
-
-    private final StringProperty id = new SimpleStringProperty();
+    private final String id;
     private final StringProperty fname = new SimpleStringProperty();
     private final StringProperty lname = new SimpleStringProperty();
     private final StringProperty email = new SimpleStringProperty();
     private final StringProperty phone = new SimpleStringProperty();
     private final StringProperty address = new SimpleStringProperty();
-    private final ObjectProperty<AccountType> type = new SimpleObjectProperty<>();
 
     /**
-     * Creates an account with an empty phone number and address.
+     * Only the subclasses in this package can create accounts; everyone else uses
+     * {@link #create}.
      */
-    public Account(String id, String fname, String lname, String email, AccountType type) {
-        this(id, fname, lname, email, type, "", "");
-    }
-
-    /**
-     * Creates an account including phone number and address.
-     */
-    public Account(String id, String fname, String lname, String email, AccountType type,
-                   String phone, String address) {
-        this.id.set(id);
+    Account(String id, String fname, String lname, String email, String phone, String address) {
+        if (!Validation.isValidId(id)) {
+            throw new IllegalArgumentException(Validation.MSG_INVALID_ID);
+        }
+        this.id = Validation.normalizeId(id);
         this.fname.set(fname);
         this.lname.set(lname);
         this.email.set(email);
-        this.type.set(type);
-        this.phone.set(phone);
-        this.address.set(address);
+        this.phone.set(phone == null ? "" : phone);
+        this.address.set(address == null ? "" : address);
+    }
+
+    /**
+     * Creates an account with an empty phone number and address.
+     *
+     * @see #create(AccountType, String, String, String, String, String, String)
+     */
+    public static Account create(AccountType type, String id, String fname, String lname,
+                                 String email) {
+        return create(type, id, fname, lname, email, "", "");
     }
 
     /**
      * Creates an account of the subclass that matches the given account type.
      *
      * @param type the account type; selects User, Worker, Manager or Admin
+     * @param id the account id; surrounding whitespace is removed
      * @return a new, unregistered account
-     * @throws IllegalArgumentException if the type is null
+     * @throws IllegalArgumentException if the type is null or the id is invalid
      */
     public static Account create(AccountType type, String id, String fname, String lname,
-                                 String email) {
+                                 String email, String phone, String address) {
         if (type == null) {
             throw new IllegalArgumentException(Validation.MSG_ACCOUNT_TYPE_REQUIRED);
         }
         return switch (type) {
-            case User -> new User(id, fname, lname, email);
-            case Worker -> new Worker(id, fname, lname, email);
-            case Manager -> new Manager(id, fname, lname, email);
-            case Admin -> new Admin(id, fname, lname, email);
+            case User -> new User(id, fname, lname, email, phone, address);
+            case Worker -> new Worker(id, fname, lname, email, phone, address);
+            case Manager -> new Manager(id, fname, lname, email, phone, address);
+            case Admin -> new Admin(id, fname, lname, email, phone, address);
         };
     }
 
     /**
-     * Looks up a registered account. Never creates an account.
-     *
-     * @param id the id of the account
-     * @return the registered account, or empty if no account has that id
-     */
-    public static Optional<Account> find(String id) {
-        return Optional.ofNullable(accountList.get(id));
-    }
-
-    /**
-     * Updates the editable profile fields. All fields are validated first; if any is
-     * invalid nothing is changed.
+     * Updates the editable profile fields of this object. All fields are validated
+     * first; if any is invalid nothing is changed. This does not persist anything;
+     * use {@code AccountService#updateProfile} for that.
      *
      * @throws IllegalArgumentException with a user-facing message if validation fails
      */
@@ -91,74 +85,66 @@ public class Account {
         if (error.isPresent()) {
             throw new IllegalArgumentException(error.get());
         }
-        setFname(fname);
-        setLname(lname);
-        setEmail(email);
-        setPhone(phone);
-        setAddress(address);
+        this.fname.set(fname);
+        this.lname.set(lname);
+        this.email.set(email);
+        this.phone.set(phone == null ? "" : phone);
+        this.address.set(address == null ? "" : address);
     }
 
+    /**
+     * @return the account id as entered at registration, without surrounding
+     *         whitespace. Ids are unique ignoring case.
+     */
     public String getId() {
-        return id.get();
+        return id;
     }
 
-    public void setId(String id) {
-        this.id.set(id);
+    /**
+     * @return the key used to look the account up: the id in lower case
+     */
+    public String getIdKey() {
+        return Validation.idKey(id);
     }
 
     public String getFname() {
         return fname.get();
     }
 
-    public void setFname(String fname) {
-        this.fname.set(fname);
-    }
-
     public String getLname() {
         return lname.get();
-    }
-
-    public void setLname(String lname) {
-        this.lname.set(lname);
     }
 
     public String getEmail() {
         return email.get();
     }
 
-    public void setEmail(String email) {
-        this.email.set(email);
-    }
-
     public String getPhone() {
         return phone.get();
-    }
-
-    public void setPhone(String phone) {
-        this.phone.set(phone);
     }
 
     public String getAddress() {
         return address.get();
     }
 
-    public void setAddress(String address) {
-        this.address.set(address);
+    /**
+     * @return the account type, determined by the subclass: User, Worker, Manager or Admin
+     */
+    public abstract AccountType getType();
+
+    /**
+     * @return the permissions of this account's type
+     */
+    public Set<Permission> getPermissions() {
+        return getType().permissions();
     }
 
     /**
-     * @return the account type: User, Worker, Manager or Admin
+     * @param permission the permission to check
+     * @return true if this account's type grants the permission
      */
-    public AccountType getType() {
-        return type.get();
-    }
-
-    public void setType(AccountType type) {
-        this.type.set(type);
-    }
-
-    public ObjectProperty<AccountType> getAccountTypeProperty() {
-        return type;
+    public boolean hasPermission(Permission permission) {
+        return getType().hasPermission(permission);
     }
 
     /**
@@ -166,6 +152,6 @@ public class Account {
      */
     @Override
     public String toString() {
-        return id.get();
+        return id;
     }
 }

@@ -1,6 +1,7 @@
 package controller;
 
 import fxapp.Main;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.input.KeyCode;
@@ -55,7 +56,7 @@ public class WelcomeController extends AnchorPane implements Initializable {
      */
     @FXML
     private void handleCloseMenu() {
-        System.exit(0);
+        Platform.exit();
     }
 
     /**

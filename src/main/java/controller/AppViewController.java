@@ -6,6 +6,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.Label;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import model.Permission;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -17,6 +18,8 @@ public class AppViewController implements Initializable {
     private Label welcome;
     @FXML
     private Label username;
+    @FXML
+    private Label createReport;
 
     private WebEngine engine;
     private Main application;
@@ -34,6 +37,10 @@ public class AppViewController implements Initializable {
         engine = webView.getEngine();
         engine.load("https://maps.google.com");
         username.setText("" + application.getLoggedAccount());
+        boolean maySubmit = application.getLoggedAccount() != null
+                && application.getLoggedAccount().hasPermission(Permission.SUBMIT_SOURCE_REPORT);
+        createReport.setVisible(maySubmit);
+        createReport.setManaged(maySubmit);
     }
 
     /**

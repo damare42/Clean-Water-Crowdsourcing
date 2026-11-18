@@ -9,14 +9,18 @@ import controller.WSRViewerController;
 import controller.WaterSourceReportController;
 import controller.WelcomeController;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.fxml.JavaFXBuilderFactory;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import model.Account;
+import model.persistence.DataAccessException;
+import model.persistence.DatabaseLocation;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,13 +37,29 @@ public class Main extends Application {
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
     /** the main container for the application window */
     private Stage stage;
+    private AppContext context;
     private Account loggedAccount;
     private final double MINIMUM_WINDOW_WIDTH = 800.0;
     private final double MINIMUM_WINDOW_HEIGHT = 600.0;
 
     @Override
     public void start(Stage primaryStage) {
-
+        if (context == null) {
+            DatabaseLocation location = null;
+            try {
+                location = DatabaseLocation.fromSystemProperties();
+                context = AppContext.open(location);
+            } catch (DataAccessException e) {
+                String where = location == null ? "(unknown location)" : location.toString();
+                LOGGER.log(Level.SEVERE, "Could not open the database " + where, e);
+                Alert alert = new Alert(Alert.AlertType.ERROR,
+                        "Could not open the database at " + where + ".\n" + e.getMessage());
+                alert.setHeaderText("Clean Water Crowdsourcing cannot start");
+                alert.showAndWait();
+                Platform.exit();
+                return;
+            }
+        }
         try {
             stage = primaryStage;
             stage.setTitle("CWC");
@@ -51,6 +71,24 @@ public class Main extends Application {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
 
+    }
+
+    /**
+     * Closes the database when the application exits.
+     */
+    @Override
+    public void stop() {
+        if (context != null) {
+            context.close();
+            context = null;
+        }
+    }
+
+    /**
+     * @return the app's services
+     */
+    public AppContext getContext() {
+        return context;
     }
 
     /**
@@ -132,12 +170,14 @@ public class Main extends Application {
     }
 
     /**
-     * Logs in a registered account and shows the app view.
-     * @param userId the id of the account to log in
-     * @return true if the account exists and was logged in, false otherwise
+     * Checks the id and password and, if they match, logs the account in and shows
+     * the app view.
+     * @param userId the id of the account to log in, in any case
+     * @param password the password; not modified, the caller should clear it
+     * @return true if the account was logged in, false if id or password is wrong
      */
-    public boolean accountLogging(String userId) {
-        Optional<Account> account = Account.find(userId);
+    public boolean accountLogging(String userId, char[] password) {
+        Optional<Account> account = context.getAuthService().login(userId, password);
         if (account.isEmpty()) {
             return false;
         }
@@ -152,7 +192,7 @@ public class Main extends Application {
      * @return true if the account exists and was logged in, false otherwise
      */
     public boolean registrationLogging(String userId) {
-        Optional<Account> account = Account.find(userId);
+        Optional<Account> account = context.getAuthService().findAccount(userId);
         if (account.isEmpty()) {
             return false;
         }

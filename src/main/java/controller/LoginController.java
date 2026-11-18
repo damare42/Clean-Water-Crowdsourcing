@@ -2,9 +2,13 @@ package controller;
 
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import model.Authenticator;
+import model.persistence.DataAccessException;
+
 import java.net.URL;
+import java.util.Arrays;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -19,6 +23,8 @@ import javafx.stage.Stage;
  * Controls the functionality of the login page
  */
 public class LoginController extends AnchorPane implements Initializable {
+    private static final Logger LOGGER = Logger.getLogger(LoginController.class.getName());
+    private static final String MSG_INVALID_LOGIN = "Invalid log in. Please try again";
     private Stage dialogStage;
     private boolean confirmLogin;
     @FXML
@@ -71,13 +77,22 @@ public class LoginController extends AnchorPane implements Initializable {
      */
     @FXML
     private void handleOKPressed() {
-        if (Authenticator.validatePassword(accountId.getText(), password.getText())
-                && application.accountLogging(accountId.getText())) {
-            confirmLogin = true;
-            dialogStage.close();
-        } else {
-            errorMessage.setVisible(true);
+        char[] secret = password.getText().toCharArray();
+        try {
+            if (application.accountLogging(accountId.getText(), secret)) {
+                confirmLogin = true;
+                dialogStage.close();
+                return;
+            }
+            errorMessage.setText(MSG_INVALID_LOGIN);
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Login failed because of a database error", e);
+            errorMessage.setText("Could not log in: " + e.getMessage());
+        } finally {
+            Arrays.fill(secret, '\0');
         }
+        password.clear();
+        errorMessage.setVisible(true);
     }
     /**
      * Becomes active when the login key pressed
@@ -86,6 +101,7 @@ public class LoginController extends AnchorPane implements Initializable {
     @FXML
     private void isKeyPressed(KeyEvent event) {
         if (event.getCode() == KeyCode.ENTER) {
+            event.consume();
             handleOKPressed();
         }
     }
@@ -96,6 +112,7 @@ public class LoginController extends AnchorPane implements Initializable {
     @FXML
     private void isKeyCanceled(KeyEvent event) {
         if (event.getCode() == KeyCode.ENTER) {
+            event.consume();
             dialogStage.close();
         }
     }

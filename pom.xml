@@ -19,6 +19,7 @@
 
         <javafx.version>21.0.5</javafx.version>
         <junit.version>5.10.3</junit.version>
+        <sqlite-jdbc.version>3.54.1.0</sqlite-jdbc.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
@@ -31,6 +32,9 @@
         <javafx-maven-plugin.version>0.0.8</javafx-maven-plugin.version>
 
         <main.class>fxapp.Main</main.class>
+        <!-- Database file for mvn javafx:run; empty means the default ~/.cwc/cwc.db.
+             Override with: mvn javafx:run -Dcwc.db.path=/path/to/file.db (or :memory:) -->
+        <cwc.db.path></cwc.db.path>
     </properties>
 
     <dependencies>
@@ -48,6 +52,11 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-web</artifactId>
             <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>${sqlite-jdbc.version}</version>
         </dependency>
 
         <dependency>
@@ -128,6 +137,9 @@
                 <version>${javafx-maven-plugin.version}</version>
                 <configuration>
                     <mainClass>${main.class}</mainClass>
+                    <options>
+                        <option>-Dcwc.db.path=${cwc.db.path}</option>
+                    </options>
                 </configuration>
             </plugin>
         </plugins>

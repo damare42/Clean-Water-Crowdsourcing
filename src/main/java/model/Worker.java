@@ -2,15 +2,16 @@ package model;
 
 /**
  * Created by Sheng on 9/27/16.
- * A worker account.
+ * A worker account; can also file water purity reports.
  */
 public class Worker extends User {
 
-    public Worker(String id, String fname, String lname, String email) {
-        this(id, fname, lname, email, AccountType.Worker);
+    Worker(String id, String fname, String lname, String email, String phone, String address) {
+        super(id, fname, lname, email, phone, address);
     }
 
-    protected Worker(String id, String fname, String lname, String email, AccountType type) {
-        super(id, fname, lname, email, type);
+    @Override
+    public AccountType getType() {
+        return AccountType.Worker;
     }
 }

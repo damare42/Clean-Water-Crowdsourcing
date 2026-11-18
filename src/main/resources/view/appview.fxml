@@ -32,7 +32,7 @@
                   <Insets left="80.0" />
                </GridPane.margin>
             </Label>
-            <Label onMouseClicked="#createWaterSourceReportClicked" text="Create Water Source Report" textAlignment="CENTER">
+            <Label fx:id="createReport" onMouseClicked="#createWaterSourceReportClicked" text="Create Water Source Report" textAlignment="CENTER">
                <GridPane.margin>
                   <Insets left="200.0" />
                </GridPane.margin>

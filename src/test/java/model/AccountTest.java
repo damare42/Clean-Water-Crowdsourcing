@@ -1,31 +1,32 @@
 package model;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AccountTest {
 
-    @BeforeEach
-    void clearStaticState() {
-        Authenticator.ACCOUNTS.clear();
-        Account.accountList.clear();
-    }
-
     private static Account alice() {
-        return new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User,
+        return Account.create(AccountType.User, "alice", "Alice", "Smith", "alice@example.com",
                 "404-555-0000", "North Ave");
     }
 
     @Test
-    void fiveArgConstructorSetsFieldsWithEmptyPhoneAndAddress() {
-        Account account = new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.Worker);
+    void fiveArgFactorySetsFieldsWithEmptyPhoneAndAddress() {
+        Account account = Account.create(AccountType.Worker, "alice", "Alice", "Smith",
+                "alice@example.com");
 
         assertEquals("alice", account.getId());
         assertEquals("Alice", account.getFname());
@@ -37,82 +38,42 @@ class AccountTest {
     }
 
     @Test
-    void sevenArgConstructorKeepsPhoneAndAddress() {
-        Account account = new Account("bob", "Bob", "Jones", "bob@example.com", AccountType.Manager,
-                "555-1234", "1 Main St");
+    void sevenArgFactoryKeepsPhoneAndAddress() {
+        Account account = Account.create(AccountType.Manager, "bob", "Bob", "Jones",
+                "bob@example.com", "555-1234", "1 Main St");
 
         assertEquals("bob", account.getId());
-        assertEquals("Bob", account.getFname());
-        assertEquals("Jones", account.getLname());
-        assertEquals("bob@example.com", account.getEmail());
         assertEquals(AccountType.Manager, account.getType());
         assertEquals("555-1234", account.getPhone());
         assertEquals("1 Main St", account.getAddress());
     }
 
     @Test
-    void constructorDoesNotRegisterAccount() {
-        alice();
+    void nullPhoneAndAddressBecomeEmpty() {
+        Account account = Account.create(AccountType.User, "bob", "Bob", "Jones",
+                "bob@example.com", null, null);
 
-        assertTrue(Account.accountList.isEmpty());
+        assertEquals("", account.getPhone());
+        assertEquals("", account.getAddress());
     }
 
     @Test
-    void settersUpdateValues() {
-        Account account = new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User);
+    void idIsStrippedAndKeyIsLowerCase() {
+        Account account = Account.create(AccountType.User, "  Alice ", "Alice", "Smith",
+                "alice@example.com");
 
-        account.setId("alice2");
-        account.setFname("Alicia");
-        account.setLname("Smythe");
-        account.setEmail("alicia@example.com");
-        account.setType(AccountType.Admin);
-        account.setPhone("404-555-0000");
-        account.setAddress("North Ave");
-
-        assertEquals("alice2", account.getId());
-        assertEquals("Alicia", account.getFname());
-        assertEquals("Smythe", account.getLname());
-        assertEquals("alicia@example.com", account.getEmail());
-        assertEquals(AccountType.Admin, account.getType());
-        assertEquals("404-555-0000", account.getPhone());
-        assertEquals("North Ave", account.getAddress());
+        assertEquals("Alice", account.getId());
+        assertEquals("alice", account.getIdKey());
+        assertEquals("Alice", account.toString());
     }
 
-    @Test
-    void accountTypePropertyReflectsType() {
-        Account account = alice();
-
-        assertEquals(AccountType.User, account.getAccountTypeProperty().get());
-        account.setType(AccountType.Worker);
-        assertEquals(AccountType.Worker, account.getAccountTypeProperty().get());
-    }
-
-    @Test
-    void toStringReturnsId() {
-        Account account = alice();
-
-        assertEquals("alice", account.toString());
-        account.setId("other");
-        assertEquals("other", account.toString());
-    }
-
-    @Test
-    void findReturnsRegisteredAccount() {
-        Account alice = alice();
-        Authenticator.addAccount(alice, "secret");
-
-        assertSame(alice, Account.find("alice").orElseThrow());
-        assertEquals(1, Account.accountList.size());
-    }
-
-    @Test
-    void findDoesNotCreateAccountForUnknownId() {
-        assertTrue(Account.find("ghost").isEmpty());
-        assertTrue(Account.find(null).isEmpty());
-
-        assertTrue(Account.accountList.isEmpty());
-        assertTrue(Authenticator.ACCOUNTS.isEmpty());
-        assertTrue(Authenticator.isIdAvailable("ghost"));
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "a", " a ", "al ice", "a\tb"})
+    void factoryRejectsInvalidIds(String id) {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> Account.create(AccountType.User, id, "A", "B", "a@example.com"));
+        assertEquals(Validation.MSG_INVALID_ID, e.getMessage());
     }
 
     @ParameterizedTest
@@ -128,27 +89,51 @@ class AccountTest {
         };
         assertEquals(expected, account.getClass());
         assertEquals(type, account.getType());
-        assertEquals("id", account.getId());
-        assertEquals("First", account.getFname());
-        assertEquals("Last", account.getLname());
-        assertEquals("f@example.com", account.getEmail());
-        assertTrue(Account.accountList.isEmpty());
+        assertEquals(type.permissions(), account.getPermissions());
     }
 
     @Test
     void createRejectsMissingType() {
-        assertThrows(IllegalArgumentException.class,
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> Account.create(null, "id", "First", "Last", "f@example.com"));
+        assertEquals(Validation.MSG_ACCOUNT_TYPE_REQUIRED, e.getMessage());
     }
 
     @Test
-    void subclassConstructorsSetTheirOwnType() {
-        assertEquals(AccountType.User, new User("u", "U", "S", "u@example.com").getType());
-        assertEquals(AccountType.Worker, new Worker("w", "W", "K", "w@example.com").getType());
-        assertEquals(AccountType.Manager, new Manager("m", "M", "G", "m@example.com").getType());
-        assertEquals(AccountType.Admin, new Admin("a", "A", "D", "a@example.com").getType());
-        assertTrue(new Manager("m", "M", "G", "m@example.com") instanceof Worker);
-        assertTrue(new Admin("a", "A", "D", "a@example.com") instanceof User);
+    void subclassHierarchyIsKept() {
+        assertTrue(Account.create(AccountType.Manager, "m1", "M", "G", "m@example.com") instanceof Worker);
+        assertTrue(Account.create(AccountType.Admin, "a1", "A", "D", "a@example.com") instanceof User);
+    }
+
+    @Test
+    void accountsCanOnlyBeCreatedThroughTheFactory() {
+        for (Class<?> type : new Class<?>[]{Account.class, User.class, Worker.class,
+                Manager.class, Admin.class}) {
+            for (Constructor<?> constructor : type.getDeclaredConstructors()) {
+                int modifiers = constructor.getModifiers();
+                assertFalse(Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers),
+                        "constructor must be package-private: " + constructor);
+            }
+        }
+        assertTrue(Modifier.isAbstract(Account.class.getModifiers()));
+    }
+
+    @Test
+    void idAndTypeCannotBeChanged() {
+        assertTrue(Arrays.stream(Account.class.getMethods()).map(Method::getName)
+                .noneMatch(name -> name.equals("setId") || name.equals("setType")));
+    }
+
+    @Test
+    void hasPermissionFollowsType() {
+        Account user = alice();
+        Account admin = Account.create(AccountType.Admin, "root", "Ada", "Admin", "a@example.com");
+
+        assertTrue(user.hasPermission(Permission.SUBMIT_SOURCE_REPORT));
+        assertFalse(user.hasPermission(Permission.MANAGE_USERS));
+        assertFalse(user.hasPermission(null));
+        assertTrue(admin.hasPermission(Permission.MANAGE_USERS));
+        assertFalse(admin.hasPermission(Permission.SUBMIT_SOURCE_REPORT));
     }
 
     @Test

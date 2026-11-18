@@ -14,16 +14,23 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import model.Account;
 import model.AccountType;
-import model.Authenticator;
+import model.persistence.DataAccessException;
 
 import java.net.URL;
+import java.util.Arrays;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by Sheng on 9/19/16.
  * Controls the registration page.
  */
 public class RegistrationController extends AnchorPane implements Initializable {
+    private static final Logger LOGGER = Logger.getLogger(RegistrationController.class.getName());
+    static final String MSG_AUTO_LOGIN_FAILED =
+            "Your account was created, but you could not be logged in. Please log in.";
+
     private Main application;
     @FXML
     private TextField id;
@@ -44,8 +51,8 @@ public class RegistrationController extends AnchorPane implements Initializable 
     @FXML
     private ComboBox<AccountType> accountTypeBox;
 
-    private final ObservableList<AccountType> accountTypeList = FXCollections.observableArrayList(
-            AccountType.User, AccountType.Worker, AccountType.Manager);
+    private final ObservableList<AccountType> accountTypeList =
+            FXCollections.observableArrayList(AccountType.selfRegistrable());
 
     /**
      * Setup the main application link so we can call methods there
@@ -65,16 +72,29 @@ public class RegistrationController extends AnchorPane implements Initializable 
      */
     @FXML
     private void registerPressed() {
+        char[] secret = password.getText().toCharArray();
+        char[] secretConfirm = passwordConfirm.getText().toCharArray();
         try {
-            Account account = Authenticator.register(id.getText(), accountTypeBox.getValue(),
-                    firstname.getText(), lastname.getText(),
-                    email.getText(), emailConfirm.getText(),
-                    password.getText(), passwordConfirm.getText());
-            application.registrationLogging(account.getId());
+            Account account = application.getContext().getAuthService().register(id.getText(),
+                    accountTypeBox.getValue(), firstname.getText(), lastname.getText(),
+                    email.getText(), emailConfirm.getText(), secret, secretConfirm);
+            if (!application.registrationLogging(account.getId())) {
+                showError(MSG_AUTO_LOGIN_FAILED);
+            }
         } catch (IllegalArgumentException e) {
-            errorMessage.setText(e.getMessage());
-            errorMessage.setVisible(true);
+            showError(e.getMessage());
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Registration failed because of a database error", e);
+            showError("Could not save the account: " + e.getMessage());
+        } finally {
+            Arrays.fill(secret, '\0');
+            Arrays.fill(secretConfirm, '\0');
         }
+    }
+
+    private void showError(String text) {
+        errorMessage.setText(text);
+        errorMessage.setVisible(true);
     }
 
     /**
@@ -84,6 +104,8 @@ public class RegistrationController extends AnchorPane implements Initializable 
     @FXML
     private void registerEntered(KeyEvent event) {
         if (event.getCode() == KeyCode.ENTER) {
+            // Consume so the page-wide handler does not register a second time.
+            event.consume();
             registerPressed();
         }
     }
@@ -103,6 +125,8 @@ public class RegistrationController extends AnchorPane implements Initializable 
     @FXML
     private void backKeyPressed(KeyEvent event) {
         if (event.getCode() == KeyCode.ENTER) {
+            // Consume so the page-wide ENTER handler does not register.
+            event.consume();
             backPressed();
         }
     }

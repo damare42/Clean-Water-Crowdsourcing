@@ -10,21 +10,23 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
 import model.Validation;
 import model.WaterSourceCondition;
-import model.WaterSourceReportHolder;
+import model.WaterSourceReport;
 import model.WaterSourceType;
+import model.persistence.DataAccessException;
+import model.service.PermissionDeniedException;
 
 import java.net.URL;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZonedDateTime;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by Sean on 10/6/2016.
  * A Controller class to handle the Water Source Report form
  */
 public class WaterSourceReportController extends AnchorPane implements Initializable {
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd");
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("H:mm");
+    private static final Logger LOGGER = Logger.getLogger(WaterSourceReportController.class.getName());
 
     private Main application;
     @FXML
@@ -53,16 +55,21 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
     public void setApp(Main application) {
         this.application = application;
         username.setText(application.getLoggedAccount().getId());
+        try {
+            number.setText(String.valueOf(application.getContext().getReportService().nextReportNumber()));
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Could not read the next report number", e);
+            number.setText("?");
+        }
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         type.setItems(FXCollections.observableArrayList(WaterSourceType.values()));
         condition.setItems(FXCollections.observableArrayList(WaterSourceCondition.values()));
-        LocalDateTime now = LocalDateTime.now();
-        date.setText(DATE_FORMAT.format(now));
-        time.setText(TIME_FORMAT.format(now));
-        number.setText(String.valueOf(WaterSourceReportHolder.nextReportNumber()));
+        ZonedDateTime now = ZonedDateTime.now();
+        date.setText(WaterSourceReport.DATE_FORMAT.format(now));
+        time.setText(WaterSourceReport.TIME_FORMAT.format(now));
         errorMessage.setText("");
     }
 
@@ -82,12 +89,19 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
         try {
             double lat = Validation.parseLatitude(latitude.getText());
             double lng = Validation.parseLongitude(longitude.getText());
-            WaterSourceReportHolder.submit(username.getText(), date.getText(), time.getText(),
+            application.getContext().getReportService().submit(application.getLoggedAccount(),
                     lat, lng, type.getValue(), condition.getValue());
             application.gotoApp();
-        } catch (IllegalArgumentException e) {
-            errorMessage.setText(e.getMessage());
-            errorMessage.setVisible(true);
+        } catch (IllegalArgumentException | PermissionDeniedException e) {
+            showError(e.getMessage());
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Could not save the report", e);
+            showError("Could not save the report: " + e.getMessage());
         }
+    }
+
+    private void showError(String text) {
+        errorMessage.setText(text);
+        errorMessage.setVisible(true);
     }
 }
