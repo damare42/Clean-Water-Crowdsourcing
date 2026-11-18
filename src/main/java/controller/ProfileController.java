@@ -12,6 +12,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
 import model.Account;
 import model.persistence.DataAccessException;
+import model.service.PermissionDeniedException;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -71,11 +72,12 @@ public class ProfileController extends AnchorPane implements Initializable {
     @FXML
     private void savePressed() {
         try {
-            application.getContext().getAccountService().updateProfile(
-                    application.getLoggedAccount(), fname.getText(), lname.getText(),
-                    email.getText(), phone.getText(), address.getText());
+            Account self = application.getLoggedAccount();
+            application.getContext().getAccountService().updateProfile(self, self,
+                    fname.getText(), lname.getText(), email.getText(), phone.getText(),
+                    address.getText());
             showMessage("Profile updated", SUCCESS_COLOR);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | PermissionDeniedException e) {
             showMessage(e.getMessage(), ERROR_COLOR);
         } catch (DataAccessException e) {
             LOGGER.log(Level.SEVERE, "Could not save profile", e);

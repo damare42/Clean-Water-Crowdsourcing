@@ -8,6 +8,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
+import model.GeoPoint;
 import model.Validation;
 import model.WaterSourceCondition;
 import model.WaterSourceReport;
@@ -98,6 +99,19 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
             LOGGER.log(Level.SEVERE, "Could not save the report", e);
             showError("Could not save the report: " + e.getMessage());
         }
+    }
+
+    /**
+     * Opens a map to choose the location and fills the latitude and longitude fields
+     * with the chosen point. The fields can still be typed in as well.
+     */
+    @FXML
+    private void pickOnMapPressed() {
+        application.pickLocation(GeoPoint.tryParse(latitude.getText(), longitude.getText()))
+                .ifPresent(point -> {
+                    latitude.setText(point.formattedLatitude());
+                    longitude.setText(point.formattedLongitude());
+                });
     }
 
     private void showError(String text) {

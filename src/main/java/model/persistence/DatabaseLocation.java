@@ -23,24 +23,36 @@ public final class DatabaseLocation {
     public static final String DEFAULT_FILE = "cwc.db";
 
     private final Path file;
+    private final boolean appDirectory;
 
-    private DatabaseLocation(Path file) {
+    private DatabaseLocation(Path file, boolean appDirectory) {
         this.file = file;
+        this.appDirectory = appDirectory;
     }
 
     /**
      * @param file the database file; its parent directory is created when opened
      * @return a location for that file
+     * @throws IllegalArgumentException if the path contains {@code ?}, which the
+     *         SQLite driver would read as the start of connection options
      */
     public static DatabaseLocation file(Path file) {
-        return new DatabaseLocation(Objects.requireNonNull(file, "file").toAbsolutePath().normalize());
+        return file(file, false);
+    }
+
+    private static DatabaseLocation file(Path file, boolean appDirectory) {
+        Path absolute = Objects.requireNonNull(file, "file").toAbsolutePath().normalize();
+        if (absolute.toString().indexOf('?') >= 0) {
+            throw new IllegalArgumentException("The database path must not contain '?': " + absolute);
+        }
+        return new DatabaseLocation(absolute, appDirectory);
     }
 
     /**
      * @return a location for a database that only exists while it is open
      */
     public static DatabaseLocation inMemory() {
-        return new DatabaseLocation(null);
+        return new DatabaseLocation(null, false);
     }
 
     /**
@@ -55,6 +67,7 @@ public final class DatabaseLocation {
      * @param override the value of {@value #PROPERTY}, or null/blank for the default
      * @param userHome the user's home directory
      * @return the location the override selects
+     * @throws IllegalArgumentException if the override is not a usable path
      */
     static DatabaseLocation resolve(String override, String userHome) {
         if (override != null && !override.isBlank()) {
@@ -64,7 +77,7 @@ public final class DatabaseLocation {
         if (userHome == null || userHome.isBlank()) {
             throw new DataAccessException("Cannot find the home directory; set -D" + PROPERTY);
         }
-        return file(Path.of(userHome, DEFAULT_DIRECTORY, DEFAULT_FILE));
+        return file(Path.of(userHome, DEFAULT_DIRECTORY, DEFAULT_FILE), true);
     }
 
     /**
@@ -72,6 +85,16 @@ public final class DatabaseLocation {
      */
     public Optional<Path> getFile() {
         return Optional.ofNullable(file);
+    }
+
+    /**
+     * @return true if the file's directory is the app's own default directory
+     *         ({@code ~/.cwc}), which holds nothing else and may be made private.
+     *         False for a file chosen with {@value #PROPERTY}, whose directory may
+     *         be shared.
+     */
+    public boolean isAppDirectory() {
+        return appDirectory;
     }
 
     /**

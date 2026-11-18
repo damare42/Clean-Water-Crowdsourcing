@@ -27,8 +27,11 @@ public final class PasswordHasher {
     public static final int DEFAULT_ITERATIONS = 210_000;
     /** Lowest iteration count this class accepts, for new and for stored hashes. */
     public static final int MIN_ITERATIONS = 1_000;
-    /** Highest stored iteration count accepted, so a corrupt hash cannot stall a login. */
-    public static final int MAX_ITERATIONS = 10_000_000;
+    /**
+     * Highest iteration count accepted, for new and for stored hashes, so a corrupt or
+     * tampered hash cannot stall a login for long (about ten times the default).
+     */
+    public static final int MAX_ITERATIONS = 2_000_000;
     /** Length of the random salt in bytes. */
     public static final int SALT_BYTES = 16;
     /** Length of the derived key in bytes. */
@@ -50,7 +53,8 @@ public final class PasswordHasher {
     }
 
     /**
-     * @param iterations the iteration count for new hashes, at least {@link #MIN_ITERATIONS}
+     * @param iterations the iteration count for new hashes, between {@link #MIN_ITERATIONS}
+     *                   and {@link #MAX_ITERATIONS}
      */
     public PasswordHasher(int iterations) {
         if (iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) {

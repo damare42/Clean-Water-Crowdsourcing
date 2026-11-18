@@ -1,0 +1,30 @@
+html, body, #map {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#map.cwc-picking {
+    cursor: crosshair;
+}
+
+.cwc-popup h3 {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+}
+
+.cwc-popup table {
+    border-collapse: collapse;
+    margin-bottom: 6px;
+}
+
+.cwc-popup th {
+    text-align: left;
+    padding-right: 8px;
+    font-weight: normal;
+    color: #555;
+}
+
+.cwc-popup td {
+    font-weight: bold;
+}

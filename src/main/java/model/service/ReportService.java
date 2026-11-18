@@ -11,6 +11,7 @@ import model.persistence.ReportRepository;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -60,6 +61,17 @@ public final class ReportService {
     public List<WaterSourceReport> listReports(Account viewer) {
         Authorization.require(viewer, Permission.VIEW_SOURCE_REPORTS);
         return reports.findAll();
+    }
+
+    /**
+     * @param viewer the logged-in account
+     * @param reportNumber the number of the report
+     * @return the report, or empty if there is none with this number
+     * @throws PermissionDeniedException if the viewer is null or may not view reports
+     */
+    public Optional<WaterSourceReport> findReport(Account viewer, int reportNumber) {
+        Authorization.require(viewer, Permission.VIEW_SOURCE_REPORTS);
+        return reports.findByNumber(reportNumber);
     }
 
     /**

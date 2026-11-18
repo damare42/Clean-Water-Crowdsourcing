@@ -40,7 +40,7 @@ class AppContextTest {
         try (AppContext first = AppContext.open(location, HASHER, CLOCK)) {
             Account alice = first.getAuthService().register("Alice", AccountType.Worker, "Alice", "Smith",
                     "a@example.com", "a@example.com", pw("secret1"), pw("secret1"));
-            first.getAccountService().updateProfile(alice, "Alicia", "Smith", "a@example.com",
+            first.getAccountService().updateProfile(alice, alice, "Alicia", "Smith", "a@example.com",
                     "555", "Tech Square");
             report = first.getReportService().submit(alice, 33.77, -84.39,
                     WaterSourceType.Lake, WaterSourceCondition.Potable);

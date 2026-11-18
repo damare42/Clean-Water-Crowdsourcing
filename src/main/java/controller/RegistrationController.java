@@ -5,6 +5,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -14,7 +15,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import model.Account;
 import model.AccountType;
-import model.persistence.DataAccessException;
+import model.service.AuthService;
 
 import java.net.URL;
 import java.util.Arrays;
@@ -50,6 +51,10 @@ public class RegistrationController extends AnchorPane implements Initializable 
     private Label errorMessage;
     @FXML
     private ComboBox<AccountType> accountTypeBox;
+    @FXML
+    private Button registerButton;
+    @FXML
+    private Button backButton;
 
     private final ObservableList<AccountType> accountTypeList =
             FXCollections.observableArrayList(AccountType.selfRegistrable());
@@ -68,28 +73,54 @@ public class RegistrationController extends AnchorPane implements Initializable 
     }
 
     /**
-     * Registers a new account, or shows the first validation error.
+     * Registers a new account, or shows the first validation error. The password is
+     * hashed on a background thread; the buttons are disabled meanwhile.
      */
     @FXML
     private void registerPressed() {
+        if (registerButton.isDisabled()) {
+            return;
+        }
+        String userId = id.getText();
+        AccountType type = accountTypeBox.getValue();
+        String first = firstname.getText();
+        String last = lastname.getText();
+        String mail = email.getText();
+        String mailConfirm = emailConfirm.getText();
         char[] secret = password.getText().toCharArray();
         char[] secretConfirm = passwordConfirm.getText().toCharArray();
-        try {
-            Account account = application.getContext().getAuthService().register(id.getText(),
-                    accountTypeBox.getValue(), firstname.getText(), lastname.getText(),
-                    email.getText(), emailConfirm.getText(), secret, secretConfirm);
-            if (!application.registrationLogging(account.getId())) {
-                showError(MSG_AUTO_LOGIN_FAILED);
+        AuthService auth = application.getContext().getAuthService();
+        setBusy(true);
+        application.runInBackground(() -> {
+            try {
+                return auth.register(userId, type, first, last, mail, mailConfirm, secret, secretConfirm);
+            } finally {
+                Arrays.fill(secret, '\0');
+                Arrays.fill(secretConfirm, '\0');
             }
-        } catch (IllegalArgumentException e) {
-            showError(e.getMessage());
-        } catch (DataAccessException e) {
-            LOGGER.log(Level.SEVERE, "Registration failed because of a database error", e);
-            showError("Could not save the account: " + e.getMessage());
-        } finally {
-            Arrays.fill(secret, '\0');
-            Arrays.fill(secretConfirm, '\0');
+        }, this::registered, this::registrationFailed);
+    }
+
+    private void registered(Account account) {
+        setBusy(false);
+        if (!application.registrationLogging(account.getId())) {
+            showError(MSG_AUTO_LOGIN_FAILED);
         }
+    }
+
+    private void registrationFailed(Throwable error) {
+        setBusy(false);
+        if (error instanceof IllegalArgumentException) {
+            showError(error.getMessage());
+            return;
+        }
+        LOGGER.log(Level.SEVERE, "Registration failed because of an error", error);
+        showError("Could not save the account: " + error.getMessage());
+    }
+
+    private void setBusy(boolean busy) {
+        registerButton.setDisable(busy);
+        backButton.setDisable(busy);
     }
 
     private void showError(String text) {
@@ -115,7 +146,9 @@ public class RegistrationController extends AnchorPane implements Initializable 
      */
     @FXML
     private void backPressed() {
-        application.accountLogout();
+        if (!backButton.isDisabled()) {
+            application.accountLogout();
+        }
     }
 
     /**

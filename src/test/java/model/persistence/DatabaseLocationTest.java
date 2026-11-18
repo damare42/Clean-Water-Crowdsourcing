@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -83,5 +84,31 @@ class DatabaseLocationTest {
                 System.setProperty(DatabaseLocation.PROPERTY, previous);
             }
         }
+    }
+
+    @Test
+    void pathWithQuestionMarkIsRejected() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> DatabaseLocation.resolve(home.resolve("cwc.db") + "?mode=ro", home.toString()));
+        assertTrue(e.getMessage().contains("'?'"), e.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> DatabaseLocation.file(home.resolve("a?b").resolve("cwc.db")));
+        assertThrows(IllegalArgumentException.class,
+                () -> DatabaseLocation.resolve(null, home.resolve("we?ird").toString()));
+    }
+
+    @Test
+    void invalidPathIsAnIllegalArgument() {
+        // InvalidPathException; the app shows an error instead of crashing
+        assertThrows(IllegalArgumentException.class,
+                () -> DatabaseLocation.resolve("bad\0name.db", home.toString()));
+    }
+
+    @Test
+    void onlyTheDefaultLocationIsTheAppDirectory() {
+        assertTrue(DatabaseLocation.resolve(null, home.toString()).isAppDirectory());
+        assertFalse(DatabaseLocation.resolve(home.resolve("x.db").toString(), home.toString()).isAppDirectory());
+        assertFalse(DatabaseLocation.file(home.resolve(".cwc/cwc.db")).isAppDirectory());
+        assertFalse(DatabaseLocation.inMemory().isAppDirectory());
     }
 }

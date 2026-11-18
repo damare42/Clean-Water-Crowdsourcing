@@ -1,0 +1,213 @@
+package controller;
+
+import javafx.concurrent.Worker;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import model.GeoPoint;
+import model.map.MapMarker;
+import model.map.MarkerJson;
+import netscape.javascript.JSException;
+import netscape.javascript.JSObject;
+
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * Shows the bundled Leaflet map page ({@value #PAGE}) in a {@link WebView} and talks
+ * to it. Leaflet and the page come from the app's resources; only the
+ * OpenStreetMap tiles need the network, so without a connection the map is blank
+ * but everything else works.
+ * <p>
+ * Calls made before the page has loaded are queued and run once it has. Data goes
+ * to the page as JSON strings passed as call arguments, never pasted into script
+ * source. The page calls back through a {@link Bridge}, which this object keeps a
+ * strong reference to: the WebView itself only holds it weakly, so without that
+ * reference it could be garbage-collected and clicks would silently stop working.
+ */
+public final class LeafletMap {
+
+    private static final Logger LOGGER = Logger.getLogger(LeafletMap.class.getName());
+
+    /** The map page on the classpath. */
+    public static final String PAGE = "/web/map.html";
+    /** Added to the WebView's user agent so tile servers can identify the app. */
+    static final String USER_AGENT_SUFFIX = " CleanWaterCrowdsourcing/0.1 (JavaFX desktop app)";
+
+    /** Receives events from the map, on the FX thread. */
+    public interface Listener {
+        /**
+         * The user asked for the details of a marker.
+         * @param kind the marker's kind, e.g. {@link MapMarker#KIND_SOURCE}
+         * @param id the marker's report number
+         */
+        default void detailsRequested(String kind, int id) {
+        }
+
+        /**
+         * The user clicked the map while picking was enabled.
+         * @param point the clicked location
+         */
+        default void locationPicked(GeoPoint point) {
+        }
+    }
+
+    private final WebEngine engine;
+    private final Bridge bridge;
+    private final List<Consumer<JSObject>> pending = new ArrayList<>();
+    private JSObject api;
+    private boolean unavailable;
+
+    /**
+     * Starts loading the map page into the view.
+     *
+     * @param view the view to show the map in
+     * @param listener gets the map's events
+     * @param linkOpener opens web links (such as the attribution) outside the app
+     */
+    public LeafletMap(WebView view, Listener listener, Consumer<String> linkOpener) {
+        this.bridge = new Bridge(Objects.requireNonNull(listener, "listener"),
+                Objects.requireNonNull(linkOpener, "linkOpener"));
+        view.setContextMenuEnabled(false);
+        engine = view.getEngine();
+        engine.setUserAgent(engine.getUserAgent() + USER_AGENT_SUFFIX);
+        engine.getLoadWorker().stateProperty().addListener((observable, old, state) -> {
+            if (state == Worker.State.SUCCEEDED) {
+                pageLoaded();
+            } else if (state == Worker.State.FAILED || state == Worker.State.CANCELLED) {
+                LOGGER.log(Level.WARNING, "The map page did not load",
+                        engine.getLoadWorker().getException());
+                giveUp();
+            }
+        });
+        URL page = LeafletMap.class.getResource(PAGE);
+        if (page == null) {
+            LOGGER.log(Level.WARNING, "Map page {0} is missing", PAGE);
+            giveUp();
+        } else {
+            engine.load(page.toExternalForm());
+        }
+    }
+
+    private void pageLoaded() {
+        try {
+            JSObject window = (JSObject) engine.executeScript("window");
+            window.setMember("cwcBridge", bridge);
+            Object map = window.getMember("cwcMap");
+            if (!(map instanceof JSObject)) {
+                LOGGER.log(Level.WARNING, "The map page has no map API");
+                giveUp();
+                return;
+            }
+            api = (JSObject) map;
+        } catch (JSException e) {
+            LOGGER.log(Level.WARNING, "Could not connect to the map page", e);
+            giveUp();
+            return;
+        }
+        List<Consumer<JSObject>> calls = List.copyOf(pending);
+        pending.clear();
+        calls.forEach(call -> call.accept(api));
+    }
+
+    private void giveUp() {
+        unavailable = true;
+        pending.clear();
+    }
+
+    private void call(String function, Object... args) {
+        Consumer<JSObject> call = target -> {
+            try {
+                target.call(function, args);
+            } catch (JSException e) {
+                LOGGER.log(Level.WARNING, "Map call " + function + " failed", e);
+            }
+        };
+        if (api != null) {
+            call.accept(api);
+        } else if (!unavailable) {
+            pending.add(call);
+        }
+    }
+
+    /**
+     * Replaces the markers on the map and zooms to show them all.
+     * @param markers the markers to show
+     */
+    public void showMarkers(List<MapMarker> markers) {
+        call("setMarkers", MarkerJson.toJson(markers));
+    }
+
+    /**
+     * Centres the map on a marker shown by {@link #showMarkers} and opens its popup.
+     * Does nothing if there is no such marker.
+     * @param kind the marker's kind
+     * @param id the marker's id
+     */
+    public void focusMarker(String kind, int id) {
+        call("focusMarker", kind, id);
+    }
+
+    /**
+     * Lets the user pick a location by clicking the map; each click is reported to
+     * {@link Listener#locationPicked}.
+     * @param initial a location to mark and centre on first, or null
+     */
+    public void enablePicking(GeoPoint initial) {
+        if (initial == null) {
+            call("enablePicking");
+        } else {
+            call("enablePicking", initial.latitude(), initial.longitude());
+        }
+    }
+
+    /**
+     * Called by the map page. Public only because the page calls it by reflection;
+     * arguments arrive as strings and are validated here.
+     */
+    public static final class Bridge {
+        private final Listener listener;
+        private final Consumer<String> linkOpener;
+
+        Bridge(Listener listener, Consumer<String> linkOpener) {
+            this.listener = listener;
+            this.linkOpener = linkOpener;
+        }
+
+        /**
+         * @param kind the marker's kind
+         * @param id the marker's id, as a decimal string
+         */
+        public void openDetails(String kind, String id) {
+            try {
+                listener.detailsRequested(kind, Integer.parseInt(id));
+            } catch (NumberFormatException e) {
+                LOGGER.log(Level.WARNING, "Ignoring details request for bad id {0}", id);
+            }
+        }
+
+        /**
+         * @param latitude the clicked latitude, as a decimal string
+         * @param longitude the clicked longitude, as a decimal string
+         */
+        public void pickLocation(String latitude, String longitude) {
+            try {
+                listener.locationPicked(GeoPoint.parse(latitude, longitude));
+            } catch (IllegalArgumentException e) {
+                LOGGER.log(Level.WARNING, "Ignoring picked location {0}, {1}",
+                        new Object[]{latitude, longitude});
+            }
+        }
+
+        /**
+         * @param url a link the user clicked on the map
+         */
+        public void openLink(String url) {
+            linkOpener.accept(url);
+        }
+    }
+}

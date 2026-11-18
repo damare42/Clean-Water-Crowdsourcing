@@ -72,6 +72,11 @@
                   <TextField fx:id="longitude" />
                </children>
             </HBox>
+            <HBox prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="2" GridPane.rowIndex="3">
+               <children>
+                  <Button fx:id="pickOnMap" mnemonicParsing="false" onAction="#pickOnMapPressed" text="Pick on map" />
+               </children>
+            </HBox>
          </children>
       </GridPane>
    </children>

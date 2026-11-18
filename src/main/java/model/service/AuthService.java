@@ -4,6 +4,7 @@ import model.Account;
 import model.AccountType;
 import model.Validation;
 import model.persistence.AccountRepository;
+import model.persistence.DataAccessException;
 import model.persistence.DuplicateKeyException;
 import model.security.PasswordHasher;
 
@@ -27,20 +28,26 @@ public final class AuthService {
 
     private final AccountRepository accounts;
     private final PasswordHasher hasher;
-    private String dummyHash;
+    /** Checked against for unknown ids, so they take as long as known ones. */
+    private final String dummyHash;
 
     /**
+     * Creates the service. This computes one password hash, so it takes about as
+     * long as a login.
+     *
      * @param accounts where accounts are stored
      * @param hasher hashes and verifies passwords
      */
     public AuthService(AccountRepository accounts, PasswordHasher hasher) {
         this.accounts = Objects.requireNonNull(accounts, "accounts");
         this.hasher = Objects.requireNonNull(hasher, "hasher");
+        this.dummyHash = hasher.hash("not-a-real-password".toCharArray());
     }
 
     /**
      * Validates a registration form and, if it is valid and the id is free, stores a
-     * new account of the subclass matching the chosen account type.
+     * new account of the subclass matching the chosen account type. This hashes the
+     * password, so call it off the UI thread.
      *
      * @param password the password; not modified, the caller should clear it
      * @param passwordConfirm the repeated password; not modified
@@ -76,7 +83,11 @@ public final class AuthService {
 
     /**
      * Checks a login attempt. If the stored hash uses fewer iterations than the
-     * current setting, it is replaced with a stronger one.
+     * current setting, it is replaced with a stronger one; if that cannot be saved,
+     * the login still succeeds and the upgrade is tried again next time.
+     * <p>
+     * This takes as long as a password hash (a noticeable fraction of a second), so
+     * call it off the UI thread.
      *
      * @param id the account id, in any case
      * @param password the password; not modified, the caller should clear it
@@ -87,7 +98,7 @@ public final class AuthService {
                 ? accounts.findPasswordHash(id) : Optional.empty();
         if (storedHash.isEmpty()) {
             // Spend about as long as a real check so unknown ids are not revealed by timing.
-            hasher.verify(password, dummyHash());
+            hasher.verify(password, dummyHash);
             LOGGER.log(Level.INFO, "Failed login: unknown id");
             return Optional.empty();
         }
@@ -96,8 +107,7 @@ public final class AuthService {
             return Optional.empty();
         }
         if (hasher.needsRehash(storedHash.get())) {
-            accounts.updatePasswordHash(id, hasher.hash(password));
-            LOGGER.log(Level.INFO, "Upgraded password hash for {0}", Validation.normalizeId(id));
+            upgradeHash(id, password);
         }
         Optional<Account> account = accounts.findById(id);
         account.ifPresent(a -> LOGGER.log(Level.INFO, "Logged in {0}", a.getId()));
@@ -122,10 +132,14 @@ public final class AuthService {
         return accounts.findById(id);
     }
 
-    private synchronized String dummyHash() {
-        if (dummyHash == null) {
-            dummyHash = hasher.hash("not-a-real-password".toCharArray());
+    private void upgradeHash(String id, char[] password) {
+        try {
+            accounts.updatePasswordHash(id, hasher.hash(password));
+            LOGGER.log(Level.INFO, "Upgraded password hash for {0}", Validation.normalizeId(id));
+        } catch (DataAccessException e) {
+            // The password was correct; a failed upgrade must not block the login.
+            LOGGER.log(Level.WARNING, "Could not upgrade the password hash for "
+                    + Validation.normalizeId(id), e);
         }
-        return dummyHash;
     }
 }

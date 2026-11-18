@@ -52,3 +52,4 @@ REST server + web/mobile client so reports are actually shared between users.
 - [x] Phase 1
 - [x] Phase 2
 - [ ] Phase 3
+  - Phase 3a: map + report table done

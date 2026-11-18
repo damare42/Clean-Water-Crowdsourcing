@@ -5,13 +5,16 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.attribute.UserPrincipal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,12 +33,22 @@ public final class SqliteDatabase implements AutoCloseable {
 
     /**
      * Schema migrations: entry {@code i} upgrades the schema from version {@code i}
-     * to {@code i + 1}. Append new entries; never change existing ones.
+     * to {@code i + 1}. Append new entries; never change existing ones once a
+     * version has been released.
+     * <p>
+     * {@code username_key} is the id lower-cased by Java ({@code Locale.ROOT}, all of
+     * Unicode), while SQLite's {@code lower()} only folds ASCII. So the checks are:
+     * the key has no ASCII upper-case letters, and for ids made only of printable
+     * ASCII the key equals {@code lower(username)}. Ids with other characters are
+     * only checked by the Java code, since SQLite cannot lower-case them the same way.
+     * The enum columns only accept the constant names of the Java enums
+     * ({@code AccountType}, {@code WaterSourceType}, {@code WaterSourceCondition}).
      */
     private static final List<List<String>> MIGRATIONS = List.of(
             List.of("""
                     CREATE TABLE IF NOT EXISTS accounts (
-                        username_key  TEXT    NOT NULL PRIMARY KEY,
+                        username_key  TEXT    NOT NULL PRIMARY KEY
+                                      CHECK (username_key <> '' AND username_key = lower(username_key)),
                         username      TEXT    NOT NULL,
                         account_type  TEXT    NOT NULL
                                       CHECK (account_type IN ('User', 'Worker', 'Manager', 'Admin')),
@@ -44,7 +57,8 @@ public final class SqliteDatabase implements AutoCloseable {
                         last_name     TEXT    NOT NULL,
                         email         TEXT    NOT NULL,
                         phone         TEXT    NOT NULL DEFAULT '',
-                        address       TEXT    NOT NULL DEFAULT ''
+                        address       TEXT    NOT NULL DEFAULT '',
+                        CHECK (username_key = lower(username) OR username GLOB '*[^ -~]*')
                     )""", """
                     CREATE TABLE IF NOT EXISTS water_source_reports (
                         report_number   INTEGER NOT NULL PRIMARY KEY CHECK (report_number > 0),
@@ -52,9 +66,17 @@ public final class SqliteDatabase implements AutoCloseable {
                         reported_at_ms  INTEGER NOT NULL,
                         latitude        REAL    NOT NULL CHECK (latitude BETWEEN -90 AND 90),
                         longitude       REAL    NOT NULL CHECK (longitude BETWEEN -180 AND 180),
-                        water_type      TEXT    NOT NULL,
+                        water_type      TEXT    NOT NULL
+                                        CHECK (water_type IN ('Lake', 'River', 'Creek', 'Well',
+                                                              'Stream', 'Pond', 'Oasis', 'Spout')),
                         water_condition TEXT    NOT NULL
+                                        CHECK (water_condition IN ('Clear', 'Muddy', 'Potable', 'Waste'))
                     )"""));
+
+    private static final Set<PosixFilePermission> PRIVATE_DIRECTORY =
+            PosixFilePermissions.fromString("rwx------");
+    private static final Set<PosixFilePermission> PRIVATE_FILE =
+            PosixFilePermissions.fromString("rw-------");
 
     /** The schema version this code creates and understands. */
     public static final int SCHEMA_VERSION = MIGRATIONS.size();
@@ -86,7 +108,7 @@ public final class SqliteDatabase implements AutoCloseable {
      *         a newer version of the app
      */
     public static SqliteDatabase open(DatabaseLocation location) {
-        location.getFile().ifPresent(SqliteDatabase::prepareFile);
+        location.getFile().ifPresent(file -> prepareFile(location, file));
         Connection connection;
         try {
             connection = DriverManager.getConnection(location.jdbcUrl());
@@ -109,29 +131,57 @@ public final class SqliteDatabase implements AutoCloseable {
     /**
      * Creates the parent directory and an empty database file, readable only by the
      * owner where the file system supports it, so password hashes are not world-readable.
+     * An existing file, and an existing default directory, are made private too if
+     * the current user owns them; that is best effort and only logged if it fails.
      */
-    private static void prepareFile(Path file) {
+    private static void prepareFile(DatabaseLocation location, Path file) {
         boolean posix = FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
         try {
             Path parent = file.getParent();
             if (parent != null && !Files.isDirectory(parent)) {
                 if (posix) {
-                    Files.createDirectories(parent, PosixFilePermissions.asFileAttribute(
-                            PosixFilePermissions.fromString("rwx------")));
+                    Files.createDirectories(parent, PosixFilePermissions.asFileAttribute(PRIVATE_DIRECTORY));
                 } else {
                     Files.createDirectories(parent);
                 }
+            } else if (posix && parent != null && location.isAppDirectory()) {
+                makePrivate(parent, PRIVATE_DIRECTORY);
             }
             if (posix && !Files.exists(file)) {
                 try {
-                    Files.createFile(file, PosixFilePermissions.asFileAttribute(
-                            PosixFilePermissions.fromString("rw-------")));
+                    Files.createFile(file, PosixFilePermissions.asFileAttribute(PRIVATE_FILE));
                 } catch (FileAlreadyExistsException e) {
                     // created concurrently; fine
                 }
+            } else if (posix) {
+                makePrivate(file, PRIVATE_FILE);
             }
         } catch (IOException e) {
             throw new DataAccessException("Cannot create database file " + file, e);
+        }
+    }
+
+    /**
+     * Sets the permissions of an existing file or directory if they differ and the
+     * current user owns it. Failures are logged, not thrown.
+     */
+    private static void makePrivate(Path path, Set<PosixFilePermission> permissions) {
+        try {
+            if (Files.getPosixFilePermissions(path).equals(permissions)) {
+                return;
+            }
+            UserPrincipal me = path.getFileSystem().getUserPrincipalLookupService()
+                    .lookupPrincipalByName(System.getProperty("user.name"));
+            if (!Files.getOwner(path).equals(me)) {
+                LOGGER.log(Level.WARNING, "{0} is not owned by the current user; leaving its "
+                        + "permissions as they are", path);
+                return;
+            }
+            Files.setPosixFilePermissions(path, permissions);
+            LOGGER.log(Level.INFO, "Restricted the permissions of {0} to {1}",
+                    new Object[]{path, PosixFilePermissions.toString(permissions)});
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+            LOGGER.log(Level.WARNING, "Could not restrict the permissions of " + path, e);
         }
     }
 

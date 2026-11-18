@@ -47,4 +47,26 @@ class AuthorizationTest {
 
         assertEquals("Worker accounts are not allowed to manage users", e.getMessage());
     }
+
+    @Test
+    void requireSelfOrAllowsSelfWithoutThePermission() {
+        Account alice = Account.create(AccountType.User, "Alice", "A", "L", "a@example.com");
+        Account sameIdOtherCase = Account.create(AccountType.User, "ALICE", "A", "L", "a@example.com");
+
+        assertDoesNotThrow(() -> Authorization.requireSelfOr(alice, alice, Permission.MANAGE_USERS));
+        assertDoesNotThrow(() -> Authorization.requireSelfOr(sameIdOtherCase, alice, Permission.MANAGE_USERS));
+    }
+
+    @Test
+    void requireSelfOrNeedsThePermissionForOthers() {
+        Account alice = Account.create(AccountType.Manager, "alice", "A", "L", "a@example.com");
+        Account bob = Account.create(AccountType.User, "bob", "B", "L", "b@example.com");
+        Account admin = Account.create(AccountType.Admin, "root", "R", "L", "r@example.com");
+
+        assertThrows(PermissionDeniedException.class,
+                () -> Authorization.requireSelfOr(alice, bob, Permission.MANAGE_USERS));
+        assertThrows(PermissionDeniedException.class,
+                () -> Authorization.requireSelfOr(null, bob, Permission.MANAGE_USERS));
+        assertDoesNotThrow(() -> Authorization.requireSelfOr(admin, bob, Permission.MANAGE_USERS));
+    }
 }

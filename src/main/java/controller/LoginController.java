@@ -1,11 +1,14 @@
 package controller;
 
+import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import model.persistence.DataAccessException;
+import model.Account;
+import model.service.AuthService;
 
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,6 +36,10 @@ public class LoginController extends AnchorPane implements Initializable {
     private PasswordField password;
     @FXML
     private Label errorMessage;
+    @FXML
+    private Button signInButton;
+    @FXML
+    private Button cancelButton;
 
     private Main application;
 
@@ -73,27 +80,62 @@ public class LoginController extends AnchorPane implements Initializable {
     }
 
     /**
-     * Becomes active when ok is pressed in the login page.
+     * Becomes active when ok is pressed in the login page. The password is checked on
+     * a background thread (hashing takes a moment); the buttons are disabled meanwhile.
      */
     @FXML
     private void handleOKPressed() {
-        char[] secret = password.getText().toCharArray();
-        try {
-            if (application.accountLogging(accountId.getText(), secret)) {
-                confirmLogin = true;
-                dialogStage.close();
-                return;
-            }
-            errorMessage.setText(MSG_INVALID_LOGIN);
-        } catch (DataAccessException e) {
-            LOGGER.log(Level.SEVERE, "Login failed because of a database error", e);
-            errorMessage.setText("Could not log in: " + e.getMessage());
-        } finally {
-            Arrays.fill(secret, '\0');
+        if (signInButton.isDisabled()) {
+            return;
         }
-        password.clear();
-        errorMessage.setVisible(true);
+        String id = accountId.getText();
+        char[] secret = password.getText().toCharArray();
+        AuthService auth = application.getContext().getAuthService();
+        setBusy(true);
+        application.runInBackground(() -> {
+            try {
+                return auth.login(id, secret);
+            } finally {
+                Arrays.fill(secret, '\0');
+            }
+        }, this::loginChecked, this::loginFailed);
     }
+
+    private void loginChecked(Optional<Account> account) {
+        setBusy(false);
+        if (!dialogStage.isShowing()) {
+            // The dialog was closed while the password was being checked.
+            return;
+        }
+        if (account.isPresent()) {
+            confirmLogin = true;
+            application.loginSucceeded(account.get());
+            dialogStage.close();
+            return;
+        }
+        showError(MSG_INVALID_LOGIN);
+    }
+
+    private void loginFailed(Throwable error) {
+        setBusy(false);
+        LOGGER.log(Level.SEVERE, "Login failed because of an error", error);
+        showError("Could not log in: " + error.getMessage());
+    }
+
+    private void setBusy(boolean busy) {
+        signInButton.setDisable(busy);
+        cancelButton.setDisable(busy);
+        accountId.setDisable(busy);
+        password.setDisable(busy);
+    }
+
+    private void showError(String text) {
+        password.clear();
+        errorMessage.setText(text);
+        errorMessage.setVisible(true);
+        password.requestFocus();
+    }
+
     /**
      * Becomes active when the login key pressed
      * @param event the event when ENTER is pressed
@@ -113,7 +155,9 @@ public class LoginController extends AnchorPane implements Initializable {
     private void isKeyCanceled(KeyEvent event) {
         if (event.getCode() == KeyCode.ENTER) {
             event.consume();
-            dialogStage.close();
+            if (!cancelButton.isDisabled()) {
+                dialogStage.close();
+            }
         }
     }
 }

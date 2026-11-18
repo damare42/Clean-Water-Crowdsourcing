@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -130,6 +131,36 @@ public final class WaterSourceReport {
 
     public WaterSourceCondition getCondition() {
         return condition;
+    }
+
+    /**
+     * @return where the water source is
+     */
+    public GeoPoint getLocation() {
+        return new GeoPoint(latitude, longitude);
+    }
+
+    /**
+     * @return a short title, e.g. "Water source report 7"
+     */
+    public String getTitle() {
+        return "Water source report " + reportNumber;
+    }
+
+    /**
+     * @param zone the time zone to display date and time in
+     * @return every field of the report, labelled and formatted for display
+     */
+    public List<ReportField> fields(ZoneId zone) {
+        return List.of(
+                new ReportField("Report number", String.valueOf(reportNumber)),
+                new ReportField("Date", getDate(zone)),
+                new ReportField("Time", getTime(zone)),
+                new ReportField("Reporter", reporter),
+                new ReportField("Type", type.name()),
+                new ReportField("Condition", condition.name()),
+                new ReportField("Latitude", GeoPoint.format(latitude)),
+                new ReportField("Longitude", GeoPoint.format(longitude)));
     }
 
     /**

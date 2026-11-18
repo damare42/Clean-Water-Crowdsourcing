@@ -4,6 +4,8 @@ import model.Account;
 import model.AccountType;
 import model.Validation;
 import model.Worker;
+import model.persistence.AccountRepository;
+import model.persistence.DataAccessException;
 import model.persistence.InMemoryAccountRepository;
 import model.security.PasswordHasher;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -198,6 +201,60 @@ class AuthServiceTest {
         assertEquals(OptionalInt.of(2 * PasswordHasher.MIN_ITERATIONS), PasswordHasher.iterationsOf(upgraded));
         assertTrue(strong.login("alice", pw("secret1")).isPresent());
         assertTrue(weak.login("alice", pw("secret1")).isPresent());
+    }
+
+    @Test
+    void failedHashUpgradeDoesNotFailACorrectLogin() {
+        AuthService weak = new AuthService(accounts, new PasswordHasher(PasswordHasher.MIN_ITERATIONS));
+        weak.register("alice", AccountType.User, "A", "B", "a@example.com", "a@example.com",
+                pw("secret1"), pw("secret1"));
+        String weakHash = accounts.findPasswordHash("alice").orElseThrow();
+        AccountRepository failingWrites = new FailingHashWrites(accounts);
+        AuthService strong = new AuthService(failingWrites,
+                new PasswordHasher(2 * PasswordHasher.MIN_ITERATIONS));
+
+        assertEquals("alice", strong.login("alice", pw("secret1")).orElseThrow().getId());
+        assertEquals(weakHash, accounts.findPasswordHash("alice").orElseThrow());
+        assertTrue(strong.login("alice", pw("wrong12")).isEmpty());
+    }
+
+    /** Delegates to another repository but fails every password hash update. */
+    private static final class FailingHashWrites implements AccountRepository {
+        private final AccountRepository delegate;
+
+        FailingHashWrites(AccountRepository delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void add(Account account, String passwordHash) {
+            delegate.add(account, passwordHash);
+        }
+
+        @Override
+        public Optional<Account> findById(String id) {
+            return delegate.findById(id);
+        }
+
+        @Override
+        public boolean existsById(String id) {
+            return delegate.existsById(id);
+        }
+
+        @Override
+        public Optional<String> findPasswordHash(String id) {
+            return delegate.findPasswordHash(id);
+        }
+
+        @Override
+        public boolean updateProfile(Account account) {
+            return delegate.updateProfile(account);
+        }
+
+        @Override
+        public boolean updatePasswordHash(String id, String passwordHash) {
+            throw new DataAccessException("database is read-only");
+        }
     }
 
     @Test

@@ -168,6 +168,23 @@ class PasswordHasherTest {
     }
 
     @Test
+    void iterationCapIsTwoMillion() {
+        assertEquals(2_000_000, PasswordHasher.MAX_ITERATIONS);
+        assertEquals(PasswordHasher.MAX_ITERATIONS,
+                new PasswordHasher(PasswordHasher.MAX_ITERATIONS).getIterations());
+    }
+
+    @Test
+    void storedHashAboveIterationCapIsRejectedWithoutHashing() {
+        String tooSlow = "pbkdf2-sha256$" + (PasswordHasher.MAX_ITERATIONS + 1)
+                + "$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
+        assertFalse(hasher.verify(pw("secret1"), tooSlow));
+        assertEquals(OptionalInt.empty(), PasswordHasher.iterationsOf(tooSlow));
+        assertTrue(hasher.needsRehash(tooSlow));
+    }
+
+    @Test
     void handlesNonAsciiPasswords() {
         String hash = hasher.hash(pw("pässwörd€"));
 

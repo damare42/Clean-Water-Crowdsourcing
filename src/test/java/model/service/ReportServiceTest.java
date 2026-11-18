@@ -17,6 +17,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -116,5 +117,24 @@ class ReportServiceTest {
         assertEquals("You must be logged in to submit source report", submitDenied.getMessage());
         assertEquals(Permission.VIEW_SOURCE_REPORTS, listDenied.getPermission());
         assertTrue(reports.findAll().isEmpty());
+    }
+
+    @Test
+    void findReportByNumber() {
+        WaterSourceReport first = submit(alice);
+        submit(alice);
+
+        assertEquals(Optional.of(first), service.findReport(account(AccountType.Admin), 1));
+        assertEquals(Optional.empty(), service.findReport(alice, 3));
+    }
+
+    @Test
+    void findReportNeedsViewPermission() {
+        submit(alice);
+
+        PermissionDeniedException e = assertThrows(PermissionDeniedException.class,
+                () -> service.findReport(null, 1));
+
+        assertEquals(Permission.VIEW_SOURCE_REPORTS, e.getPermission());
     }
 }

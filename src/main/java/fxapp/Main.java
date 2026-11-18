@@ -3,29 +3,35 @@ package fxapp;
 
 import controller.AppViewController;
 import controller.LoginController;
+import controller.MapPickerController;
 import controller.ProfileController;
 import controller.RegistrationController;
+import controller.ReportDetailsController;
 import controller.WSRViewerController;
 import controller.WaterSourceReportController;
 import controller.WelcomeController;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXMLLoader;
-import javafx.fxml.Initializable;
-import javafx.fxml.JavaFXBuilderFactory;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
-import javafx.scene.layout.AnchorPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import model.Account;
-import model.persistence.DataAccessException;
+import model.GeoPoint;
+import model.WaterSourceReport;
 import model.persistence.DatabaseLocation;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,27 +45,22 @@ public class Main extends Application {
     private Stage stage;
     private AppContext context;
     private Account loggedAccount;
+    /** Runs slow work (password hashing) off the FX thread, one job at a time. */
+    private ExecutorService background;
     private final double MINIMUM_WINDOW_WIDTH = 800.0;
     private final double MINIMUM_WINDOW_HEIGHT = 600.0;
 
     @Override
     public void start(Stage primaryStage) {
-        if (context == null) {
-            DatabaseLocation location = null;
-            try {
-                location = DatabaseLocation.fromSystemProperties();
-                context = AppContext.open(location);
-            } catch (DataAccessException e) {
-                String where = location == null ? "(unknown location)" : location.toString();
-                LOGGER.log(Level.SEVERE, "Could not open the database " + where, e);
-                Alert alert = new Alert(Alert.AlertType.ERROR,
-                        "Could not open the database at " + where + ".\n" + e.getMessage());
-                alert.setHeaderText("Clean Water Crowdsourcing cannot start");
-                alert.showAndWait();
-                Platform.exit();
-                return;
-            }
+        if (context == null && !openContext()) {
+            Platform.exit();
+            return;
         }
+        background = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "cwc-background");
+            thread.setDaemon(true);
+            return thread;
+        });
         try {
             stage = primaryStage;
             stage.setTitle("CWC");
@@ -74,10 +75,35 @@ public class Main extends Application {
     }
 
     /**
-     * Closes the database when the application exits.
+     * Opens the database. On any failure (bad path, unreadable file, missing native
+     * SQLite library, ...) shows an error and returns false.
+     */
+    private boolean openContext() {
+        DatabaseLocation location = null;
+        try {
+            location = DatabaseLocation.fromSystemProperties();
+            context = AppContext.open(location);
+            return true;
+        } catch (RuntimeException | LinkageError e) {
+            String where = location == null ? "" : " at " + location;
+            LOGGER.log(Level.SEVERE, "Could not open the database" + where, e);
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Could not open the database" + where + ".\n" + e.getMessage());
+            alert.setHeaderText("Clean Water Crowdsourcing cannot start");
+            alert.showAndWait();
+            return false;
+        }
+    }
+
+    /**
+     * Stops background work and closes the database when the application exits.
      */
     @Override
     public void stop() {
+        if (background != null) {
+            background.shutdownNow();
+            background = null;
+        }
         if (context != null) {
             context.close();
             context = null;
@@ -98,11 +124,33 @@ public class Main extends Application {
     public Account getLoggedAccount() { return loggedAccount;}
 
     /**
+     * Runs work on a background thread in a {@link Task}. Exactly one of the
+     * callbacks is then called on the FX thread.
+     *
+     * @param work the work; must not touch the UI
+     * @param onSuccess gets the result of the work
+     * @param onFailure gets the exception the work threw
+     * @param <T> the result type
+     */
+    public <T> void runInBackground(Callable<T> work, Consumer<T> onSuccess,
+                                    Consumer<Throwable> onFailure) {
+        Task<T> task = new Task<>() {
+            @Override
+            protected T call() throws Exception {
+                return work.call();
+            }
+        };
+        task.setOnSucceeded(e -> onSuccess.accept(task.getValue()));
+        task.setOnFailed(e -> onFailure.accept(task.getException()));
+        background.execute(task);
+    }
+
+    /**
      * a method to send the app to the welcome screen
      */
     private void gotoWelcome() {
         try {
-            WelcomeController welcome = (WelcomeController) replaceSceneContent("/view/WelcomePage.fxml");
+            WelcomeController welcome = replaceSceneContent("/view/WelcomePage.fxml");
             welcome.setApp(this);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
@@ -114,7 +162,7 @@ public class Main extends Application {
      */
     public void gotoRegistration() {
         try {
-            RegistrationController registration = (RegistrationController) replaceSceneContent("/view/RegisterPage.fxml");
+            RegistrationController registration = replaceSceneContent("/view/RegisterPage.fxml");
             registration.setApp(this);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
@@ -126,7 +174,7 @@ public class Main extends Application {
      */
     public void gotoProfile() {
         try {
-            ProfileController profile = (ProfileController) replaceSceneContent("/view/ProfilePage.fxml");
+            ProfileController profile = replaceSceneContent("/view/ProfilePage.fxml");
             profile.setApp(this);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
@@ -137,12 +185,26 @@ public class Main extends Application {
      * a method to send the app to the map page
      */
     public void gotoApp() {
+        loadAppView();
+    }
+
+    private Optional<AppViewController> loadAppView() {
         try {
-            AppViewController appView = (AppViewController) replaceSceneContent("/view/appview.fxml");
+            AppViewController appView = replaceSceneContent("/view/appview.fxml");
             appView.setApp(this);
+            return Optional.of(appView);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
+            return Optional.empty();
         }
+    }
+
+    /**
+     * Shows the map page centred on a report, with its popup open.
+     * @param report the report to show
+     */
+    public void showOnMap(WaterSourceReport report) {
+        loadAppView().ifPresent(appView -> appView.focusReport(report));
     }
 
     /**
@@ -150,7 +212,7 @@ public class Main extends Application {
      */
     public void gotoWaterSourceReport() {
         try {
-            WaterSourceReportController waterSourceReportController = (WaterSourceReportController) replaceSceneContent("/view/WaterSourceReport.fxml");
+            WaterSourceReportController waterSourceReportController = replaceSceneContent("/view/WaterSourceReport.fxml");
             waterSourceReportController.setApp(this);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
@@ -162,7 +224,7 @@ public class Main extends Application {
      */
     public void gotoWSRViewer() {
         try {
-            WSRViewerController WSRViewers = (WSRViewerController) replaceSceneContent("/view/WSRViewer.fxml");
+            WSRViewerController WSRViewers = replaceSceneContent("/view/WSRViewer.fxml");
             WSRViewers.setApp(this);
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
@@ -170,20 +232,12 @@ public class Main extends Application {
     }
 
     /**
-     * Checks the id and password and, if they match, logs the account in and shows
-     * the app view.
-     * @param userId the id of the account to log in, in any case
-     * @param password the password; not modified, the caller should clear it
-     * @return true if the account was logged in, false if id or password is wrong
+     * Logs in an account whose password has been checked and shows the app view.
+     * @param account the account that logged in
      */
-    public boolean accountLogging(String userId, char[] password) {
-        Optional<Account> account = context.getAuthService().login(userId, password);
-        if (account.isEmpty()) {
-            return false;
-        }
-        loggedAccount = account.get();
+    public void loginSucceeded(Account account) {
+        loggedAccount = account;
         gotoApp();
-        return true;
     }
 
     /**
@@ -211,27 +265,37 @@ public class Main extends Application {
         return true;
     }
 
+    private static FXMLLoader load(String fxml) throws IOException {
+        URL location = Main.class.getResource(fxml);
+        if (location == null) {
+            throw new IOException("FXML resource not found on classpath: " + fxml);
+        }
+        FXMLLoader loader = new FXMLLoader(location);
+        loader.load();
+        return loader;
+    }
+
     /**
      * a method to initialize the page passed from the fxml
      * @param fxml the fxml files used with the app page
      * @return the controller of the page the app is currently on
-     * @throws Exception if the loading happened multiple times
+     * @throws IOException if the page cannot be loaded
      */
-    private Initializable replaceSceneContent(String fxml) throws Exception {
-        FXMLLoader loader = new FXMLLoader();
-        loader.setBuilderFactory(new JavaFXBuilderFactory());
-        loader.setLocation(Main.class.getResource(fxml));
-        AnchorPane page;
-        try (InputStream in = Main.class.getResourceAsStream(fxml)) {
-            if (in == null) {
-                throw new IOException("FXML resource not found on classpath: " + fxml);
-            }
-            page = (AnchorPane) loader.load(in);
-        }
-        Scene scene = new Scene(page, MINIMUM_WINDOW_WIDTH, MINIMUM_WINDOW_HEIGHT);
+    private <C> C replaceSceneContent(String fxml) throws IOException {
+        FXMLLoader loader = load(fxml);
+        Scene scene = new Scene(loader.getRoot(), MINIMUM_WINDOW_WIDTH, MINIMUM_WINDOW_HEIGHT);
         stage.setScene(scene);
         stage.sizeToScene();
-        return (Initializable) loader.getController();
+        return loader.getController();
+    }
+
+    private Stage dialogStage(Parent root, String title) {
+        Stage dialog = new Stage();
+        dialog.setTitle(title);
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.initOwner(stage);
+        dialog.setScene(new Scene(root));
+        return dialog;
     }
 
     /**
@@ -240,30 +304,14 @@ public class Main extends Application {
      */
     public boolean showLoginDialog() {
         try {
-            // Load the fxml file and create a new stage for the popup dialog.
-            FXMLLoader loader = new FXMLLoader();
-            URL location = Main.class.getResource("/view/LoginPage.fxml");
-            if (location == null) {
-                throw new IOException("FXML resource not found on classpath: /view/LoginPage.fxml");
-            }
-            loader.setLocation(location);
-            AnchorPane page = loader.load();
-
-            // Create the dialog Stage.
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle("Log in");
-            dialogStage.initModality(Modality.WINDOW_MODAL);
-            dialogStage.initOwner(stage);
-            Scene scene = new Scene(page);
-            dialogStage.setScene(scene);
-
-            // Set the person into the controller.
+            FXMLLoader loader = load("/view/LoginPage.fxml");
+            Stage dialog = dialogStage(loader.getRoot(), "Log in");
             LoginController controller = loader.getController();
-            controller.setDialogStage(dialogStage);
+            controller.setDialogStage(dialog);
             controller.setApp(this);
 
             // Show the dialog and wait until the user closes it
-            dialogStage.showAndWait();
+            dialog.showAndWait();
 
             return controller.confirmLoginClicked();
 
@@ -271,6 +319,55 @@ public class Main extends Application {
             LOGGER.log(Level.SEVERE, "Could not load the login dialog", e);
             return false;
         }
+    }
+
+    /**
+     * Opens a window with all the details of a report. Does not wait for it to close.
+     * @param report the report to show
+     */
+    public void showReportDetails(WaterSourceReport report) {
+        try {
+            FXMLLoader loader = load("/view/ReportDetails.fxml");
+            Stage dialog = dialogStage(loader.getRoot(), report.getTitle());
+            ReportDetailsController controller = loader.getController();
+            controller.setUp(this, dialog, report);
+            dialog.show();
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Could not load the report details", e);
+        }
+    }
+
+    /**
+     * Lets the user pick a location on a map and waits until the window is closed.
+     * @param initial the location to show first, if any
+     * @return the chosen location, or empty if the user cancelled
+     */
+    public Optional<GeoPoint> pickLocation(Optional<GeoPoint> initial) {
+        try {
+            FXMLLoader loader = load("/view/MapPicker.fxml");
+            Stage dialog = dialogStage(loader.getRoot(), "Pick a location");
+            MapPickerController controller = loader.getController();
+            controller.setUp(this, dialog, initial);
+            dialog.showAndWait();
+            return controller.getResult();
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Could not load the location picker", e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Opens a web link (e.g. the map's attribution) in the system browser instead of
+     * inside the app. Only http and https links are opened.
+     * @param url the link
+     */
+    public void openExternalLink(String url) {
+        String lower = url == null ? "" : url.toLowerCase(Locale.ROOT);
+        if (!lower.startsWith("https://") && !lower.startsWith("http://")) {
+            LOGGER.log(Level.WARNING, "Not opening link {0}", url);
+            return;
+        }
+        getHostServices().showDocument(url);
     }
 
     /**
