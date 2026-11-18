@@ -1,13 +1,11 @@
 package controller;
 
 import fxapp.Main;
-import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
@@ -39,7 +37,7 @@ import java.util.logging.Logger;
  * number at first. Double-click a row, or select it and press Details, to see the
  * report on its own.
  */
-public class WSRViewerController extends AnchorPane implements Initializable {
+public class WSRViewerController extends AnchorPane implements Initializable, Page {
     private static final Logger LOGGER = Logger.getLogger(WSRViewerController.class.getName());
 
     private Main application;
@@ -70,19 +68,19 @@ public class WSRViewerController extends AnchorPane implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        column(numberColumn, WaterSourceReport::getReportNumber, Object::toString);
-        column(dateColumn, r -> r.getReportedAt().atZone(zone).toLocalDate(),
+        Tables.column(numberColumn, WaterSourceReport::getReportNumber, Object::toString);
+        Tables.column(dateColumn, r -> r.getReportedAt().atZone(zone).toLocalDate(),
                 WaterSourceReport.DATE_FORMAT::format);
-        column(timeColumn, r -> r.getReportedAt().atZone(zone).toLocalTime(),
+        Tables.column(timeColumn, r -> r.getReportedAt().atZone(zone).toLocalTime(),
                 WaterSourceReport.TIME_FORMAT::format);
-        column(reporterColumn, WaterSourceReport::getReporter, Function.identity());
+        Tables.column(reporterColumn, WaterSourceReport::getReporter, Function.identity());
         reporterColumn.setComparator(String.CASE_INSENSITIVE_ORDER);
-        column(typeColumn, WaterSourceReport::getType, Enum::name);
+        Tables.column(typeColumn, WaterSourceReport::getType, Enum::name);
         typeColumn.setComparator(Comparator.comparing(Enum::name));
-        column(conditionColumn, WaterSourceReport::getCondition, Enum::name);
+        Tables.column(conditionColumn, WaterSourceReport::getCondition, Enum::name);
         conditionColumn.setComparator(Comparator.comparing(Enum::name));
-        column(latitudeColumn, WaterSourceReport::getLatitude, GeoPoint::format);
-        column(longitudeColumn, WaterSourceReport::getLongitude, GeoPoint::format);
+        Tables.column(latitudeColumn, WaterSourceReport::getLatitude, GeoPoint::format);
+        Tables.column(longitudeColumn, WaterSourceReport::getLongitude, GeoPoint::format);
 
         reportTable.setRowFactory(table -> {
             TableRow<WaterSourceReport> row = new TableRow<>();
@@ -99,26 +97,10 @@ public class WSRViewerController extends AnchorPane implements Initializable {
     }
 
     /**
-     * Makes a column show one property of the report, sorted by its natural order
-     * and displayed with the given formatter.
-     */
-    private static <T> void column(TableColumn<WaterSourceReport, T> column,
-                                   Function<WaterSourceReport, T> value,
-                                   Function<T, String> format) {
-        column.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(value.apply(cell.getValue())));
-        column.setCellFactory(c -> new TableCell<>() {
-            @Override
-            protected void updateItem(T item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? null : format.apply(item));
-            }
-        });
-    }
-
-    /**
      * Loads the reports into the table.
      * @param application the main application
      */
+    @Override
     public void setApp(Main application) {
         this.application = application;
         try {

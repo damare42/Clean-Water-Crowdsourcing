@@ -26,7 +26,7 @@ import java.util.logging.Logger;
  * Created by Sean on 10/6/2016.
  * A Controller class to handle the Water Source Report form
  */
-public class WaterSourceReportController extends AnchorPane implements Initializable {
+public class WaterSourceReportController extends AnchorPane implements Initializable, Page {
     private static final Logger LOGGER = Logger.getLogger(WaterSourceReportController.class.getName());
 
     private Main application;
@@ -53,6 +53,7 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
      * Setup the main application link so we can call methods there
      * @param application the reference to the FX Application instance
      */
+    @Override
     public void setApp(Main application) {
         this.application = application;
         username.setText(application.getLoggedAccount().getId());

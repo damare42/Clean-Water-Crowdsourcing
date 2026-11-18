@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 /**
  * Controls the profile page, where the logged-in user edits their details.
  */
-public class ProfileController extends AnchorPane implements Initializable {
+public class ProfileController extends AnchorPane implements Initializable, Page {
     private static final Logger LOGGER = Logger.getLogger(ProfileController.class.getName());
     static final Color SUCCESS_COLOR = Color.web("#2e7d32");
     static final Color ERROR_COLOR = Color.web("#d32020");
@@ -50,6 +50,7 @@ public class ProfileController extends AnchorPane implements Initializable {
      * Sets up the profile page with the logged-in account's details.
      * @param application the main application
      */
+    @Override
     public void setApp(Main application) {
         this.application = application;
         Account loggedAccount = application.getLoggedAccount();

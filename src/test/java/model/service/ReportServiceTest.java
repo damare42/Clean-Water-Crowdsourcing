@@ -8,6 +8,7 @@ import model.WaterSourceCondition;
 import model.WaterSourceReport;
 import model.WaterSourceType;
 import model.persistence.InMemoryReportRepository;
+import model.persistence.InMemorySecurityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,7 +36,9 @@ class ReportServiceTest {
     @BeforeEach
     void setUp() {
         reports = new InMemoryReportRepository();
-        service = new ReportService(reports, Clock.fixed(NOW, ZoneOffset.UTC));
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        service = new ReportService(reports, clock,
+                new AccessControl(new SecurityLog(new InMemorySecurityLogRepository(), clock)));
         alice = Account.create(AccountType.User, "alice", "Alice", "Smith", "a@example.com");
     }
 

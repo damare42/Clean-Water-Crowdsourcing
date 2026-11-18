@@ -1,5 +1,6 @@
 package controller;
 
+import javafx.application.Platform;
 import javafx.concurrent.Worker;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
@@ -11,7 +12,9 @@ import netscape.javascript.JSObject;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -28,6 +31,10 @@ import java.util.logging.Logger;
  * source. The page calls back through a {@link Bridge}, which this object keeps a
  * strong reference to: the WebView itself only holds it weakly, so without that
  * reference it could be garbage-collected and clicks would silently stop working.
+ * <p>
+ * Only the bundled page ever gets the bridge. Pop-up windows are blocked, and if the
+ * view starts loading any other page it is sent back to the bundled one (whose state
+ * is then restored), so a foreign page can never call into Java.
  */
 public final class LeafletMap {
 
@@ -58,7 +65,14 @@ public final class LeafletMap {
 
     private final WebEngine engine;
     private final Bridge bridge;
+    /** The bundled page's URL; the only page that gets the bridge. */
+    private final String pageUrl;
     private final List<Consumer<JSObject>> pending = new ArrayList<>();
+    /**
+     * Calls that set up the page's state (markers, picking), replayed if the page has
+     * to be reloaded after an attempt to navigate away.
+     */
+    private final Map<String, Consumer<JSObject>> state = new LinkedHashMap<>();
     private JSObject api;
     private boolean unavailable;
 
@@ -75,25 +89,60 @@ public final class LeafletMap {
         view.setContextMenuEnabled(false);
         engine = view.getEngine();
         engine.setUserAgent(engine.getUserAgent() + USER_AGENT_SUFFIX);
-        engine.getLoadWorker().stateProperty().addListener((observable, old, state) -> {
-            if (state == Worker.State.SUCCEEDED) {
+        // window.open and target="_blank" would otherwise load into this same engine.
+        engine.setCreatePopupHandler(features -> null);
+        URL page = LeafletMap.class.getResource(PAGE);
+        pageUrl = page == null ? null : page.toExternalForm();
+        engine.getLoadWorker().stateProperty().addListener((observable, old, loadState) -> {
+            if (loadState == Worker.State.SUCCEEDED) {
                 pageLoaded();
-            } else if (state == Worker.State.FAILED || state == Worker.State.CANCELLED) {
+            } else if (loadState == Worker.State.FAILED && isBundledPage(engine.getLocation())) {
                 LOGGER.log(Level.WARNING, "The map page did not load",
                         engine.getLoadWorker().getException());
                 giveUp();
             }
         });
-        URL page = LeafletMap.class.getResource(PAGE);
-        if (page == null) {
+        engine.locationProperty().addListener((observable, old, location) -> {
+            if (pageUrl != null && !unavailable && !isBundledPage(location)) {
+                leftBundledPage(location);
+            }
+        });
+        if (pageUrl == null) {
             LOGGER.log(Level.WARNING, "Map page {0} is missing", PAGE);
             giveUp();
         } else {
-            engine.load(page.toExternalForm());
+            engine.load(pageUrl);
         }
     }
 
+    private boolean isBundledPage(String location) {
+        return pageUrl != null && pageUrl.equals(location);
+    }
+
+    /**
+     * Something tried to navigate the map view away from the bundled page. That page
+     * never links anywhere inside the view, so this is unexpected: take the bridge
+     * away from whatever is loading and go back to the map.
+     */
+    private void leftBundledPage(String location) {
+        LOGGER.log(Level.WARNING, "The map view tried to navigate to {0}; reloading the map", location);
+        api = null;
+        pending.clear();
+        pending.addAll(state.values());
+        // Not from inside the location listener: start the reload once this event is done.
+        Platform.runLater(() -> {
+            if (!unavailable && !isBundledPage(engine.getLocation())) {
+                engine.load(pageUrl);
+            }
+        });
+    }
+
     private void pageLoaded() {
+        if (!isBundledPage(engine.getLocation())) {
+            // Never expose the bridge to any other page; the location listener reloads the map.
+            LOGGER.log(Level.WARNING, "Not connecting the map to unexpected page {0}", engine.getLocation());
+            return;
+        }
         try {
             JSObject window = (JSObject) engine.executeScript("window");
             window.setMember("cwcBridge", bridge);
@@ -119,7 +168,14 @@ public final class LeafletMap {
         pending.clear();
     }
 
-    private void call(String function, Object... args) {
+    /**
+     * Calls a function of the page's API, now or once the page has loaded.
+     *
+     * @param stateKey if not null, the call sets up page state and is remembered under
+     *                 this key (replacing an earlier call with the same key), so it can
+     *                 be replayed if the page is reloaded
+     */
+    private void call(String stateKey, String function, Object... args) {
         Consumer<JSObject> call = target -> {
             try {
                 target.call(function, args);
@@ -127,6 +183,9 @@ public final class LeafletMap {
                 LOGGER.log(Level.WARNING, "Map call " + function + " failed", e);
             }
         };
+        if (stateKey != null) {
+            state.put(stateKey, call);
+        }
         if (api != null) {
             call.accept(api);
         } else if (!unavailable) {
@@ -139,7 +198,7 @@ public final class LeafletMap {
      * @param markers the markers to show
      */
     public void showMarkers(List<MapMarker> markers) {
-        call("setMarkers", MarkerJson.toJson(markers));
+        call("markers", "setMarkers", MarkerJson.toJson(markers));
     }
 
     /**
@@ -149,7 +208,7 @@ public final class LeafletMap {
      * @param id the marker's id
      */
     public void focusMarker(String kind, int id) {
-        call("focusMarker", kind, id);
+        call(null, "focusMarker", kind, id);
     }
 
     /**
@@ -159,9 +218,9 @@ public final class LeafletMap {
      */
     public void enablePicking(GeoPoint initial) {
         if (initial == null) {
-            call("enablePicking");
+            call("picking", "enablePicking");
         } else {
-            call("enablePicking", initial.latitude(), initial.longitude());
+            call("picking", "enablePicking", initial.latitude(), initial.longitude());
         }
     }
 

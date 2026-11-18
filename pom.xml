@@ -35,6 +35,9 @@
         <!-- Database file for mvn javafx:run; empty means the default ~/.cwc/cwc.db.
              Override with: mvn javafx:run -Dcwc.db.path=/path/to/file.db (or :memory:) -->
         <cwc.db.path></cwc.db.path>
+        <!-- Id of the first administrator, created at start-up while none exists; empty
+             means no bootstrap. Use: mvn javafx:run -Dcwc.bootstrapAdmin=admin -->
+        <cwc.bootstrapAdmin></cwc.bootstrapAdmin>
     </properties>
 
     <dependencies>
@@ -139,6 +142,7 @@
                     <mainClass>${main.class}</mainClass>
                     <options>
                         <option>-Dcwc.db.path=${cwc.db.path}</option>
+                        <option>-Dcwc.bootstrapAdmin=${cwc.bootstrapAdmin}</option>
                     </options>
                 </configuration>
             </plugin>

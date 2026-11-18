@@ -56,8 +56,9 @@ class SqliteDatabaseTest {
         try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.file(file))) {
             assertTrue(Files.isRegularFile(file));
             assertEquals(SqliteDatabase.SCHEMA_VERSION, database.schemaVersion());
-            assertEquals(1, SqliteDatabase.SCHEMA_VERSION);
-            assertTrue(tables(database).containsAll(List.of("accounts", "water_source_reports")),
+            assertEquals(2, SqliteDatabase.SCHEMA_VERSION);
+            assertTrue(tables(database).containsAll(List.of("accounts", "water_source_reports",
+                            "water_purity_reports", "security_log")),
                     tables(database).toString());
             assertEquals(file.toAbsolutePath().normalize().toString(), database.getLocation().toString());
         }

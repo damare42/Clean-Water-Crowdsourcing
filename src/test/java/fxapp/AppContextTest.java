@@ -37,7 +37,7 @@ class AppContextTest {
     void accountsProfilesAndReportsSurviveRestart() throws Exception {
         DatabaseLocation location = DatabaseLocation.file(dir.resolve("cwc/cwc.db"));
         WaterSourceReport report;
-        try (AppContext first = AppContext.open(location, HASHER, CLOCK)) {
+        try (AppContext first = AppContext.open(location, HASHER, CLOCK, ZoneOffset.UTC)) {
             Account alice = first.getAuthService().register("Alice", AccountType.Worker, "Alice", "Smith",
                     "a@example.com", "a@example.com", pw("secret1"), pw("secret1"));
             first.getAccountService().updateProfile(alice, alice, "Alicia", "Smith", "a@example.com",
@@ -49,7 +49,7 @@ class AppContextTest {
         assertFalse(Files.readString(dir.resolve("cwc/cwc.db"), java.nio.charset.StandardCharsets.ISO_8859_1)
                 .contains("secret1"), "plain password must not be stored");
 
-        try (AppContext second = AppContext.open(location, HASHER, CLOCK)) {
+        try (AppContext second = AppContext.open(location, HASHER, CLOCK, ZoneOffset.UTC)) {
             Account alice = second.getAuthService().login("alice", pw("secret1")).orElseThrow();
             assertEquals("Alice", alice.getId());
             assertEquals(AccountType.Worker, alice.getType());
@@ -64,7 +64,7 @@ class AppContextTest {
 
     @Test
     void inMemoryContextWorksWithoutDatabase() {
-        try (AppContext context = AppContext.inMemory(HASHER, CLOCK)) {
+        try (AppContext context = AppContext.inMemory(HASHER, CLOCK, ZoneOffset.UTC)) {
             Account bob = context.getAuthService().register("bob", AccountType.User, "Bob", "Jones",
                     "b@example.com", "b@example.com", pw("secret1"), pw("secret1"));
             context.getReportService().submit(bob, 0, 0, WaterSourceType.Well, WaterSourceCondition.Clear);

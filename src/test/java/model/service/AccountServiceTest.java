@@ -6,10 +6,13 @@ import model.Permission;
 import model.Validation;
 import model.persistence.DataAccessException;
 import model.persistence.InMemoryAccountRepository;
+import model.persistence.InMemorySecurityLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+
+import java.time.Clock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -24,7 +27,8 @@ class AccountServiceTest {
     @BeforeEach
     void setUp() {
         accounts = new InMemoryAccountRepository();
-        service = new AccountService(accounts);
+        SecurityLog log = new SecurityLog(new InMemorySecurityLogRepository(), Clock.systemUTC());
+        service = new AccountService(accounts, new AccessControl(log), log);
         alice = Account.create(AccountType.Worker, "Alice", "Alice", "Smith", "alice@example.com");
         accounts.add(alice, "hash");
     }

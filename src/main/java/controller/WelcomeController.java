@@ -15,7 +15,7 @@ import java.util.ResourceBundle;
  * Created by Sheng on 9/19/16.
  * A controller for the the welcome page
  */
-public class WelcomeController extends AnchorPane implements Initializable {
+public class WelcomeController extends AnchorPane implements Initializable, Page {
 
     private Main application;
 
@@ -23,6 +23,7 @@ public class WelcomeController extends AnchorPane implements Initializable {
      * sets the welcome page
      * @param application the main application of welcome page
      */
+    @Override
     public void setApp(Main application){ this.application = application;
     }
 

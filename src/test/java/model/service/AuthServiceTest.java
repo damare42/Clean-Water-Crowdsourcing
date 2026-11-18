@@ -1,18 +1,23 @@
 package model.service;
 
 import model.Account;
+import model.AccountSummary;
 import model.AccountType;
 import model.Validation;
 import model.Worker;
 import model.persistence.AccountRepository;
 import model.persistence.DataAccessException;
 import model.persistence.InMemoryAccountRepository;
+import model.persistence.InMemorySecurityLogRepository;
+import model.security.LockoutPolicy;
 import model.security.PasswordHasher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.time.Clock;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -27,12 +32,19 @@ class AuthServiceTest {
     private InMemoryAccountRepository accounts;
     private PasswordHasher hasher;
     private AuthService auth;
+    private InMemorySecurityLogRepository securityEvents;
 
     @BeforeEach
     void setUp() {
         accounts = new InMemoryAccountRepository();
         hasher = new PasswordHasher(PasswordHasher.MIN_ITERATIONS);
-        auth = new AuthService(accounts, hasher);
+        securityEvents = new InMemorySecurityLogRepository();
+        auth = authService(accounts, hasher);
+    }
+
+    private AuthService authService(AccountRepository repository, PasswordHasher passwordHasher) {
+        return new AuthService(repository, passwordHasher,
+                new SecurityLog(securityEvents, Clock.systemUTC()), LockoutPolicy.DEFAULT);
     }
 
     private static char[] pw(String s) {
@@ -185,11 +197,11 @@ class AuthServiceTest {
 
     @Test
     void loginUpgradesWeakHash() {
-        AuthService weak = new AuthService(accounts, new PasswordHasher(PasswordHasher.MIN_ITERATIONS));
+        AuthService weak = authService(accounts, new PasswordHasher(PasswordHasher.MIN_ITERATIONS));
         weak.register("alice", AccountType.User, "A", "B", "a@example.com", "a@example.com",
                 pw("secret1"), pw("secret1"));
         PasswordHasher stronger = new PasswordHasher(2 * PasswordHasher.MIN_ITERATIONS);
-        AuthService strong = new AuthService(accounts, stronger);
+        AuthService strong = authService(accounts, stronger);
 
         assertTrue(strong.login("alice", pw("wrong12")).isEmpty());
         assertEquals(OptionalInt.of(PasswordHasher.MIN_ITERATIONS),
@@ -205,12 +217,12 @@ class AuthServiceTest {
 
     @Test
     void failedHashUpgradeDoesNotFailACorrectLogin() {
-        AuthService weak = new AuthService(accounts, new PasswordHasher(PasswordHasher.MIN_ITERATIONS));
+        AuthService weak = authService(accounts, new PasswordHasher(PasswordHasher.MIN_ITERATIONS));
         weak.register("alice", AccountType.User, "A", "B", "a@example.com", "a@example.com",
                 pw("secret1"), pw("secret1"));
         String weakHash = accounts.findPasswordHash("alice").orElseThrow();
         AccountRepository failingWrites = new FailingHashWrites(accounts);
-        AuthService strong = new AuthService(failingWrites,
+        AuthService strong = authService(failingWrites,
                 new PasswordHasher(2 * PasswordHasher.MIN_ITERATIONS));
 
         assertEquals("alice", strong.login("alice", pw("secret1")).orElseThrow().getId());
@@ -254,6 +266,36 @@ class AuthServiceTest {
         @Override
         public boolean updatePasswordHash(String id, String passwordHash) {
             throw new DataAccessException("database is read-only");
+        }
+
+        @Override
+        public boolean addFirstOfType(Account account, String passwordHash) {
+            return delegate.addFirstOfType(account, passwordHash);
+        }
+
+        @Override
+        public boolean existsByType(AccountType type) {
+            return delegate.existsByType(type);
+        }
+
+        @Override
+        public boolean isBanned(String id) {
+            return delegate.isBanned(id);
+        }
+
+        @Override
+        public boolean setBanned(String id, boolean banned) {
+            return delegate.setBanned(id, banned);
+        }
+
+        @Override
+        public boolean delete(String id) {
+            return delegate.delete(id);
+        }
+
+        @Override
+        public List<AccountSummary> findAllSummaries() {
+            return delegate.findAllSummaries();
         }
     }
 

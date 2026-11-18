@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * Created by Sheng on 9/19/16.
  * Controls the registration page.
  */
-public class RegistrationController extends AnchorPane implements Initializable {
+public class RegistrationController extends AnchorPane implements Initializable, Page {
     private static final Logger LOGGER = Logger.getLogger(RegistrationController.class.getName());
     static final String MSG_AUTO_LOGIN_FAILED =
             "Your account was created, but you could not be logged in. Please log in.";
@@ -63,6 +63,7 @@ public class RegistrationController extends AnchorPane implements Initializable 
      * Setup the main application link so we can call methods there
      * @param application the reference to the FX Application instance
      */
+    @Override
     public void setApp(Main application) {
         this.application = application;
     }

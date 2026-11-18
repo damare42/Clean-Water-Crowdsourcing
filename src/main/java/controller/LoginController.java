@@ -3,12 +3,12 @@ package controller;
 import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import model.Account;
 import model.service.AuthService;
+import model.service.LoginResult;
 
 import java.net.URL;
 import java.util.Arrays;
-import java.util.Optional;
+import java.time.Instant;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,7 +27,6 @@ import javafx.stage.Stage;
  */
 public class LoginController extends AnchorPane implements Initializable {
     private static final Logger LOGGER = Logger.getLogger(LoginController.class.getName());
-    private static final String MSG_INVALID_LOGIN = "Invalid log in. Please try again";
     private Stage dialogStage;
     private boolean confirmLogin;
     @FXML
@@ -82,6 +81,8 @@ public class LoginController extends AnchorPane implements Initializable {
     /**
      * Becomes active when ok is pressed in the login page. The password is checked on
      * a background thread (hashing takes a moment); the buttons are disabled meanwhile.
+     * A refused login shows why: invalid id or password, banned account (only after
+     * a correct password) or too many failed attempts.
      */
     @FXML
     private void handleOKPressed() {
@@ -94,26 +95,26 @@ public class LoginController extends AnchorPane implements Initializable {
         setBusy(true);
         application.runInBackground(() -> {
             try {
-                return auth.login(id, secret);
+                return auth.authenticate(id, secret);
             } finally {
                 Arrays.fill(secret, '\0');
             }
         }, this::loginChecked, this::loginFailed);
     }
 
-    private void loginChecked(Optional<Account> account) {
+    private void loginChecked(LoginResult result) {
         setBusy(false);
         if (!dialogStage.isShowing()) {
             // The dialog was closed while the password was being checked.
             return;
         }
-        if (account.isPresent()) {
+        if (result.getAccount().isPresent()) {
             confirmLogin = true;
-            application.loginSucceeded(account.get());
+            application.loginSucceeded(result.getAccount().get());
             dialogStage.close();
             return;
         }
-        showError(MSG_INVALID_LOGIN);
+        showError(result.message(Instant.now()));
     }
 
     private void loginFailed(Throwable error) {

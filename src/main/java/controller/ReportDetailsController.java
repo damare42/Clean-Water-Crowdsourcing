@@ -7,7 +7,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import model.ReportField;
-import model.WaterSourceReport;
+import model.Report;
 
 import java.net.URL;
 import java.time.ZoneId;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 /**
- * A window showing every field of one water source report.
+ * A window showing every field of one report (water source or water purity).
  */
 public class ReportDetailsController implements Initializable {
 
@@ -26,7 +26,7 @@ public class ReportDetailsController implements Initializable {
 
     private Main application;
     private Stage dialogStage;
-    private WaterSourceReport report;
+    private Report report;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -38,7 +38,7 @@ public class ReportDetailsController implements Initializable {
      * @param dialogStage the window this controller is shown in
      * @param report the report to show
      */
-    public void setUp(Main application, Stage dialogStage, WaterSourceReport report) {
+    public void setUp(Main application, Stage dialogStage, Report report) {
         this.application = application;
         this.dialogStage = dialogStage;
         this.report = report;

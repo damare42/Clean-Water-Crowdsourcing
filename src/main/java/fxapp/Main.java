@@ -2,14 +2,11 @@ package fxapp;
 
 
 import controller.AppViewController;
+import controller.CreateAdminController;
 import controller.LoginController;
 import controller.MapPickerController;
-import controller.ProfileController;
-import controller.RegistrationController;
+import controller.Page;
 import controller.ReportDetailsController;
-import controller.WSRViewerController;
-import controller.WaterSourceReportController;
-import controller.WelcomeController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -21,7 +18,9 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import model.Account;
 import model.GeoPoint;
-import model.WaterSourceReport;
+import model.Report;
+import model.Validation;
+import model.persistence.DataAccessException;
 import model.persistence.DatabaseLocation;
 
 import java.io.IOException;
@@ -38,9 +37,17 @@ import java.util.logging.Logger;
 /**
  * the main method of the application that deals with the creation of windows
  * and handling of the interactions between the views and the controllers
+ * <p>
+ * Administrator bootstrap: there is no way to register an administrator. Start the
+ * app with {@code -D}{@value #BOOTSTRAP_ADMIN_PROPERTY}{@code =<id>} while no
+ * administrator account exists, and a dialog asks for the details and password of
+ * an administrator with that id. Once an administrator exists the property is
+ * ignored (and a warning is logged).
  */
 public class Main extends Application {
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
+    /** System property that asks for the first administrator to be created at start-up. */
+    public static final String BOOTSTRAP_ADMIN_PROPERTY = "cwc.bootstrapAdmin";
     /** the main container for the application window */
     private Stage stage;
     private AppContext context;
@@ -71,7 +78,61 @@ public class Main extends Application {
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
+        bootstrapAdministratorIfRequested();
+    }
 
+    /**
+     * Shows the dialog that creates the first administrator if the
+     * {@value #BOOTSTRAP_ADMIN_PROPERTY} system property is set and no administrator
+     * exists yet.
+     */
+    private void bootstrapAdministratorIfRequested() {
+        String id = System.getProperty(BOOTSTRAP_ADMIN_PROPERTY);
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        try {
+            if (context.getAuthService().hasAdministrator()) {
+                LOGGER.log(Level.WARNING, "Ignoring -D{0}: an administrator account already exists",
+                        BOOTSTRAP_ADMIN_PROPERTY);
+                return;
+            }
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Could not check for an administrator account", e);
+            return;
+        }
+        if (!Validation.isValidId(id)) {
+            LOGGER.log(Level.WARNING, "Ignoring -D{0}: {1}",
+                    new Object[]{BOOTSTRAP_ADMIN_PROPERTY, Validation.MSG_INVALID_ID});
+            return;
+        }
+        showCreateAdministratorDialog(Validation.normalizeId(id));
+    }
+
+    /**
+     * Shows the dialog that creates the first administrator and waits until it is closed.
+     * @param id the id of the administrator
+     * @return the created administrator, or empty if none was created
+     */
+    public Optional<Account> showCreateAdministratorDialog(String id) {
+        try {
+            FXMLLoader loader = load("/view/CreateAdmin.fxml");
+            Stage dialog = dialogStage(loader.getRoot(), "Create administrator");
+            CreateAdminController controller = loader.getController();
+            controller.setUp(this, dialog, id);
+            dialog.showAndWait();
+            controller.getCreated().ifPresent(admin -> {
+                Alert done = new Alert(Alert.AlertType.INFORMATION,
+                        "The administrator account " + admin.getId() + " was created. You can log in now.");
+                done.setHeaderText("Administrator created");
+                done.initOwner(stage);
+                done.show();
+            });
+            return controller.getCreated();
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Could not load the administrator dialog", e);
+            return Optional.empty();
+        }
     }
 
     /**
@@ -146,89 +207,105 @@ public class Main extends Application {
     }
 
     /**
+     * Shows a full-window page and sets it up.
+     * @param fxml the page's FXML resource
+     * @return the page's controller, or empty if the page could not be loaded
+     */
+    private <C extends Page> Optional<C> showPage(String fxml) {
+        try {
+            C page = replaceSceneContent(fxml);
+            page.setApp(this);
+            return Optional.of(page);
+        } catch (IOException | RuntimeException ex) {
+            LOGGER.log(Level.SEVERE, "Could not load page " + fxml, ex);
+            return Optional.empty();
+        }
+    }
+
+    /**
      * a method to send the app to the welcome screen
      */
     private void gotoWelcome() {
-        try {
-            WelcomeController welcome = replaceSceneContent("/view/WelcomePage.fxml");
-            welcome.setApp(this);
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
-        }
+        showPage("/view/WelcomePage.fxml");
     }
 
     /**
      * a method to send the app to the registration page
      */
     public void gotoRegistration() {
-        try {
-            RegistrationController registration = replaceSceneContent("/view/RegisterPage.fxml");
-            registration.setApp(this);
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
-        }
+        showPage("/view/RegisterPage.fxml");
     }
 
     /**
      * a method to send the app to the profile page
      */
     public void gotoProfile() {
-        try {
-            ProfileController profile = replaceSceneContent("/view/ProfilePage.fxml");
-            profile.setApp(this);
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
-        }
+        showPage("/view/ProfilePage.fxml");
     }
 
     /**
      * a method to send the app to the map page
      */
     public void gotoApp() {
-        loadAppView();
-    }
-
-    private Optional<AppViewController> loadAppView() {
-        try {
-            AppViewController appView = replaceSceneContent("/view/appview.fxml");
-            appView.setApp(this);
-            return Optional.of(appView);
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
-            return Optional.empty();
-        }
+        showPage("/view/appview.fxml");
     }
 
     /**
      * Shows the map page centred on a report, with its popup open.
      * @param report the report to show
      */
-    public void showOnMap(WaterSourceReport report) {
-        loadAppView().ifPresent(appView -> appView.focusReport(report));
+    public void showOnMap(Report report) {
+        this.<AppViewController>showPage("/view/appview.fxml")
+                .ifPresent(appView -> appView.focusReport(report));
     }
 
     /**
      * a method to direct the program to the water source creation page
      */
     public void gotoWaterSourceReport() {
-        try {
-            WaterSourceReportController waterSourceReportController = replaceSceneContent("/view/WaterSourceReport.fxml");
-            waterSourceReportController.setApp(this);
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
-        }
+        showPage("/view/WaterSourceReport.fxml");
     }
 
     /**
      * a method to send the application to the Water Source Report Viewer page
      */
     public void gotoWSRViewer() {
-        try {
-            WSRViewerController WSRViewers = replaceSceneContent("/view/WSRViewer.fxml");
-            WSRViewers.setApp(this);
-        } catch (Exception ex) {
-            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
-        }
+        showPage("/view/WSRViewer.fxml");
+    }
+
+    /**
+     * Shows the water purity report form.
+     */
+    public void gotoPurityReport() {
+        showPage("/view/PurityReport.fxml");
+    }
+
+    /**
+     * Shows the list of water purity reports.
+     */
+    public void gotoPurityList() {
+        showPage("/view/PurityList.fxml");
+    }
+
+    /**
+     * Shows the purity history chart.
+     */
+    public void gotoPurityHistory() {
+        showPage("/view/PurityHistory.fxml");
+    }
+
+    /**
+     * Shows the administrator's account list.
+     */
+    public void gotoAccounts() {
+        showPage("/view/AdminAccounts.fxml");
+    }
+
+    /**
+     * Shows the security log.
+     */
+    public void gotoSecurityLog() {
+        showPage("/view/SecurityLog.fxml");
     }
 
     /**
@@ -325,7 +402,7 @@ public class Main extends Application {
      * Opens a window with all the details of a report. Does not wait for it to close.
      * @param report the report to show
      */
-    public void showReportDetails(WaterSourceReport report) {
+    public void showReportDetails(Report report) {
         try {
             FXMLLoader loader = load("/view/ReportDetails.fxml");
             Stage dialog = dialogStage(loader.getRoot(), report.getTitle());

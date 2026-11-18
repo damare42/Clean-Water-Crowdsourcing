@@ -16,7 +16,7 @@ import java.util.Objects;
  * The time of the report is a single {@link Instant} (millisecond precision); date
  * and time are only split for display, in a given time zone.
  */
-public final class WaterSourceReport {
+public final class WaterSourceReport implements Report {
     /** Format of {@link #getDate(ZoneId)}, e.g. 2016/10/11. */
     public static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd");
     /** Format of {@link #getTime(ZoneId)}, e.g. 9:05. */
@@ -83,6 +83,7 @@ public final class WaterSourceReport {
         }
     }
 
+    @Override
     public int getReportNumber() {
         return reportNumber;
     }
@@ -90,6 +91,7 @@ public final class WaterSourceReport {
     /**
      * @return the id of the account that filed the report
      */
+    @Override
     public String getReporter() {
         return reporter;
     }
@@ -97,6 +99,7 @@ public final class WaterSourceReport {
     /**
      * @return when the report was filed
      */
+    @Override
     public Instant getReportedAt() {
         return reportedAt;
     }
@@ -136,6 +139,7 @@ public final class WaterSourceReport {
     /**
      * @return where the water source is
      */
+    @Override
     public GeoPoint getLocation() {
         return new GeoPoint(latitude, longitude);
     }
@@ -143,6 +147,7 @@ public final class WaterSourceReport {
     /**
      * @return a short title, e.g. "Water source report 7"
      */
+    @Override
     public String getTitle() {
         return "Water source report " + reportNumber;
     }
@@ -151,6 +156,7 @@ public final class WaterSourceReport {
      * @param zone the time zone to display date and time in
      * @return every field of the report, labelled and formatted for display
      */
+    @Override
     public List<ReportField> fields(ZoneId zone) {
         return List.of(
                 new ReportField("Report number", String.valueOf(reportNumber)),

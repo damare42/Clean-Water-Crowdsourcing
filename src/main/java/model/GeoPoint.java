@@ -15,6 +15,8 @@ public record GeoPoint(double latitude, double longitude) {
 
     /** Decimal places kept by {@link #format(double)}: 6 places is about 0.1 m. */
     public static final int DECIMALS = 6;
+    /** Mean radius of the Earth in kilometres (IUGG), used by {@link #distanceKm}. */
+    public static final double EARTH_RADIUS_KM = 6371.0088;
 
     /**
      * @throws IllegalArgumentException with a user-facing message if a coordinate is
@@ -83,5 +85,26 @@ public record GeoPoint(double latitude, double longitude) {
      */
     public String formattedLongitude() {
         return format(longitude);
+    }
+
+    /**
+     * The great-circle distance to another point, by the haversine formula on a
+     * sphere of radius {@link #EARTH_RADIUS_KM}. Accurate to about 0.5% (the Earth is
+     * not a perfect sphere), which is plenty for "reports near here". Works across
+     * the 180th meridian and at the poles.
+     *
+     * @param other the other point
+     * @return the distance in kilometres, from 0 to about 20015
+     */
+    public double distanceKm(GeoPoint other) {
+        double lat1 = Math.toRadians(latitude);
+        double lat2 = Math.toRadians(other.latitude);
+        double dLat = lat2 - lat1;
+        double dLon = Math.toRadians(other.longitude - longitude);
+        double sinLat = Math.sin(dLat / 2);
+        double sinLon = Math.sin(dLon / 2);
+        double h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLon * sinLon;
+        // min() guards against rounding pushing h a hair above 1 for antipodal points.
+        return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(Math.min(1.0, h)));
     }
 }

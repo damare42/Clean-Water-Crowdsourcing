@@ -13,7 +13,7 @@
    <children>
       <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <top>
-            <Label text="Click the map where the water source is." BorderPane.alignment="CENTER_LEFT">
+            <Label text="Click the map to choose the location." BorderPane.alignment="CENTER_LEFT">
                <padding>
                   <Insets bottom="6.0" left="10.0" top="6.0" />
                </padding>

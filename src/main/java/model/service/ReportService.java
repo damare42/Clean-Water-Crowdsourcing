@@ -24,14 +24,17 @@ public final class ReportService {
 
     private final ReportRepository reports;
     private final Clock clock;
+    private final AccessControl access;
 
     /**
      * @param reports where reports are stored
      * @param clock supplies the time stamped on new reports
+     * @param access checks permissions and records denials
      */
-    public ReportService(ReportRepository reports, Clock clock) {
+    public ReportService(ReportRepository reports, Clock clock, AccessControl access) {
         this.reports = Objects.requireNonNull(reports, "reports");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.access = Objects.requireNonNull(access, "access");
     }
 
     /**
@@ -45,7 +48,7 @@ public final class ReportService {
      */
     public WaterSourceReport submit(Account reporter, double latitude, double longitude,
                                     WaterSourceType type, WaterSourceCondition condition) {
-        Authorization.require(reporter, Permission.SUBMIT_SOURCE_REPORT);
+        access.require(reporter, Permission.SUBMIT_SOURCE_REPORT);
         WaterSourceReport report = reports.add(new WaterSourceReportDraft(reporter.getId(),
                 clock.instant(), latitude, longitude, type, condition));
         LOGGER.log(Level.INFO, "Report {0} filed by {1}",
@@ -59,7 +62,7 @@ public final class ReportService {
      * @throws PermissionDeniedException if the viewer is null or may not view reports
      */
     public List<WaterSourceReport> listReports(Account viewer) {
-        Authorization.require(viewer, Permission.VIEW_SOURCE_REPORTS);
+        access.require(viewer, Permission.VIEW_SOURCE_REPORTS);
         return reports.findAll();
     }
 
@@ -70,7 +73,7 @@ public final class ReportService {
      * @throws PermissionDeniedException if the viewer is null or may not view reports
      */
     public Optional<WaterSourceReport> findReport(Account viewer, int reportNumber) {
-        Authorization.require(viewer, Permission.VIEW_SOURCE_REPORTS);
+        access.require(viewer, Permission.VIEW_SOURCE_REPORTS);
         return reports.findByNumber(reportNumber);
     }
 

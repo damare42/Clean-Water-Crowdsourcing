@@ -21,6 +21,17 @@ public final class Validation {
     public static final double MAX_LATITUDE = 90.0;
     public static final double MIN_LONGITUDE = -180.0;
     public static final double MAX_LONGITUDE = 180.0;
+    /** Highest accepted concentration in parts per million: one million PPM is 100%. */
+    public static final double MAX_PPM = 1_000_000.0;
+    /**
+     * Largest search radius in kilometres for the purity history; about half the
+     * Earth's circumference, so it covers almost the whole planet.
+     */
+    public static final double MAX_RADIUS_KM = 20_000.0;
+    /** Earliest year the purity history accepts. */
+    public static final int MIN_YEAR = 1900;
+    /** Latest year the purity history accepts. */
+    public static final int MAX_YEAR = 9999;
 
     public static final String MSG_INVALID_ID =
             "Username must be at least " + MIN_ID_LENGTH + " characters and contain no spaces";
@@ -41,6 +52,16 @@ public final class Validation {
             "Longitude must be a number between -180 and 180";
     public static final String MSG_TYPE_REQUIRED = "Please select the type of water";
     public static final String MSG_CONDITION_REQUIRED = "Please select the condition of the water";
+    public static final String MSG_PURITY_CONDITION_REQUIRED =
+            "Please select the overall condition of the water";
+    public static final String MSG_INVALID_VIRUS_PPM =
+            "Virus PPM must be a number from 0 to 1000000";
+    public static final String MSG_INVALID_CONTAMINANT_PPM =
+            "Contaminant PPM must be a number from 0 to 1000000";
+    public static final String MSG_INVALID_RADIUS =
+            "Radius must be a number of kilometres greater than 0 and at most 20000";
+    public static final String MSG_INVALID_YEAR =
+            "Year must be a whole number from " + MIN_YEAR + " to " + MAX_YEAR;
 
     private static final Pattern EMAIL = Pattern.compile(
             "^[_A-Za-z0-9-]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$");
@@ -50,6 +71,8 @@ public final class Validation {
             Pattern.UNICODE_CHARACTER_CLASS);
     /** Plain decimal numbers only: no exponents, hex, type suffixes, NaN or Infinity. */
     private static final Pattern DECIMAL = Pattern.compile("[+-]?(\\d+(\\.\\d*)?|\\.\\d+)");
+    /** A year: one to four ASCII digits. */
+    private static final Pattern YEAR = Pattern.compile("[0-9]{1,4}");
 
     private Validation() {
     }
@@ -161,6 +184,91 @@ public final class Validation {
             throw new IllegalArgumentException(MSG_INVALID_LONGITUDE);
         }
         return value;
+    }
+
+    /**
+     * @param ppm a concentration in parts per million
+     * @return true if the value is a number from 0 to {@value #MAX_PPM}
+     */
+    public static boolean isValidPpm(double ppm) {
+        return ppm >= 0 && ppm <= MAX_PPM;
+    }
+
+    /**
+     * Parses a user-entered virus concentration. Like coordinates, only plain decimal
+     * numbers are accepted (no exponents, NaN or Infinity).
+     *
+     * @return the value in parts per million; never -0.0
+     * @throws IllegalArgumentException if the text is not a number from 0 to {@value #MAX_PPM}
+     */
+    public static double parseVirusPpm(String text) {
+        return parsePpm(text, MSG_INVALID_VIRUS_PPM);
+    }
+
+    /**
+     * Parses a user-entered contaminant concentration; see {@link #parseVirusPpm}.
+     *
+     * @return the value in parts per million; never -0.0
+     * @throws IllegalArgumentException if the text is not a number from 0 to {@value #MAX_PPM}
+     */
+    public static double parseContaminantPpm(String text) {
+        return parsePpm(text, MSG_INVALID_CONTAMINANT_PPM);
+    }
+
+    private static double parsePpm(String text, String message) {
+        double value = parseNumber(text, message);
+        if (!isValidPpm(value)) {
+            throw new IllegalArgumentException(message);
+        }
+        return value + 0.0;
+    }
+
+    /**
+     * @param radiusKm a search radius in kilometres
+     * @return true if the radius is greater than 0 and at most {@value #MAX_RADIUS_KM}
+     */
+    public static boolean isValidRadiusKm(double radiusKm) {
+        return radiusKm > 0 && radiusKm <= MAX_RADIUS_KM;
+    }
+
+    /**
+     * Parses a user-entered search radius (plain decimal numbers only).
+     *
+     * @return the radius in kilometres
+     * @throws IllegalArgumentException if the text is not a valid radius
+     */
+    public static double parseRadiusKm(String text) {
+        double value = parseNumber(text, MSG_INVALID_RADIUS);
+        if (!isValidRadiusKm(value)) {
+            throw new IllegalArgumentException(MSG_INVALID_RADIUS);
+        }
+        return value;
+    }
+
+    /**
+     * @param year a calendar year
+     * @return true if the year is from {@value #MIN_YEAR} to {@value #MAX_YEAR}
+     */
+    public static boolean isValidYear(int year) {
+        return year >= MIN_YEAR && year <= MAX_YEAR;
+    }
+
+    /**
+     * Parses a user-entered year: digits only, from {@value #MIN_YEAR} to {@value #MAX_YEAR}.
+     *
+     * @return the year
+     * @throws IllegalArgumentException if the text is not a valid year
+     */
+    public static int parseYear(String text) {
+        String trimmed = text == null ? "" : text.trim();
+        if (!YEAR.matcher(trimmed).matches()) {
+            throw new IllegalArgumentException(MSG_INVALID_YEAR);
+        }
+        int year = Integer.parseInt(trimmed);
+        if (!isValidYear(year)) {
+            throw new IllegalArgumentException(MSG_INVALID_YEAR);
+        }
+        return year;
     }
 
     private static double parseNumber(String text, String message) {

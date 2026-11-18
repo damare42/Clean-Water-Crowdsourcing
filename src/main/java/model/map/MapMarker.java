@@ -1,7 +1,9 @@
 package model.map;
 
 import model.GeoPoint;
+import model.Report;
 import model.ReportField;
+import model.WaterPurityReport;
 import model.WaterSourceReport;
 
 import java.time.ZoneId;
@@ -11,9 +13,9 @@ import java.util.Objects;
 /**
  * A pin on the map: where it is, what it stands for, and the text of its popup.
  * The {@code kind} and {@code id} together identify the report behind the pin, so
- * the map can ask for its details (other kinds of reports can get their own kind).
+ * the map can ask for its details; the map page also draws each kind differently.
  *
- * @param kind    what the pin stands for, e.g. {@link #KIND_SOURCE}
+ * @param kind    what the pin stands for: {@link #KIND_SOURCE} or {@link #KIND_PURITY}
  * @param id      the number of the report, unique within its kind
  * @param position where the pin is
  * @param title   the heading of the popup
@@ -21,8 +23,10 @@ import java.util.Objects;
  */
 public record MapMarker(String kind, int id, GeoPoint position, String title, List<ReportField> fields) {
 
-    /** Kind of the markers made by {@link #forSourceReport}. */
+    /** Kind of the markers for water source reports. */
     public static final String KIND_SOURCE = "source";
+    /** Kind of the markers for water purity reports. */
+    public static final String KIND_PURITY = "purity";
 
     public MapMarker {
         Objects.requireNonNull(kind, "kind");
@@ -32,19 +36,48 @@ public record MapMarker(String kind, int id, GeoPoint position, String title, Li
     }
 
     /**
+     * @param report a water source or water purity report
+     * @return the kind of marker that stands for it
+     * @throws IllegalArgumentException for any other kind of report
+     */
+    public static String kindOf(Report report) {
+        if (report instanceof WaterSourceReport) {
+            return KIND_SOURCE;
+        }
+        if (report instanceof WaterPurityReport) {
+            return KIND_PURITY;
+        }
+        throw new IllegalArgumentException("No marker kind for " + report);
+    }
+
+    /**
      * @param report the report to show
      * @param zone   the time zone for the report's date and time
      * @return a marker at the report's location whose popup shows all its fields
      */
-    public static MapMarker forSourceReport(WaterSourceReport report, ZoneId zone) {
-        return new MapMarker(KIND_SOURCE, report.getReportNumber(), report.getLocation(),
+    public static MapMarker forReport(Report report, ZoneId zone) {
+        return new MapMarker(kindOf(report), report.getReportNumber(), report.getLocation(),
                 report.getTitle(), report.fields(zone));
     }
 
     /**
      * @return markers for all the reports, in the same order
      */
+    public static List<MapMarker> forReports(List<? extends Report> reports, ZoneId zone) {
+        return reports.stream().map(r -> forReport(r, zone)).toList();
+    }
+
+    /**
+     * @see #forReport
+     */
+    public static MapMarker forSourceReport(WaterSourceReport report, ZoneId zone) {
+        return forReport(report, zone);
+    }
+
+    /**
+     * @see #forReports
+     */
     public static List<MapMarker> forSourceReports(List<WaterSourceReport> reports, ZoneId zone) {
-        return reports.stream().map(r -> forSourceReport(r, zone)).toList();
+        return forReports(reports, zone);
     }
 }

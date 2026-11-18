@@ -52,6 +52,28 @@
     var markerLayer = L.layerGroup().addTo(map);
     var markersByKey = {};
     var pickMarker = null;
+    var picking = false;
+
+    // Purity reports get their own round icon so they stand out from source pins.
+    var PURITY_ICON = L.divIcon({
+        className: 'cwc-purity-icon',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+        popupAnchor: [0, -8]
+    });
+
+    var legend = L.control({position: 'bottomleft'});
+    legend.onAdd = function () {
+        var box = L.DomUtil.create('div', 'cwc-legend');
+        var source = L.DomUtil.create('div', '', box);
+        L.DomUtil.create('span', 'cwc-legend-source', source);
+        source.appendChild(document.createTextNode(' Water source report'));
+        var purity = L.DomUtil.create('div', '', box);
+        L.DomUtil.create('span', 'cwc-legend-purity', purity);
+        purity.appendChild(document.createTextNode(' Water purity report'));
+        return box;
+    };
+    var legendShown = false;
 
     function key(kind, id) {
         return kind + ':' + id;
@@ -93,13 +115,26 @@
         markerLayer.clearLayers();
         markersByKey = {};
         var bounds = [];
+        var purityCount = 0;
         markers.forEach(function (m) {
-            var marker = L.marker([m.lat, m.lon], {title: m.title, alt: m.title});
+            var options = {title: m.title, alt: m.title};
+            if (m.kind === 'purity') {
+                options.icon = PURITY_ICON;
+                purityCount++;
+            }
+            var marker = L.marker([m.lat, m.lon], options);
             marker.bindPopup(popupContent(m));
             marker.addTo(markerLayer);
             markersByKey[key(m.kind, m.id)] = marker;
             bounds.push([m.lat, m.lon]);
         });
+        if (purityCount > 0 && !legendShown) {
+            legend.addTo(map);
+            legendShown = true;
+        } else if (purityCount === 0 && legendShown) {
+            legend.remove();
+            legendShown = false;
+        }
         if (bounds.length > 0) {
             map.fitBounds(bounds, {maxZoom: 12, padding: [30, 30], animate: false});
         }
@@ -124,19 +159,25 @@
         }
     }
 
+    function pickAt(event) {
+        var latlng = event.latlng.wrap();
+        placePickMarker(latlng);
+        if (bridge()) {
+            bridge().pickLocation(latlng.lat.toFixed(6), latlng.lng.toFixed(6));
+        }
+    }
+
+    // Safe to call more than once: the click handler is only registered the first time.
     function enablePicking(lat, lon) {
-        L.DomUtil.addClass(map.getContainer(), 'cwc-picking');
+        if (!picking) {
+            picking = true;
+            L.DomUtil.addClass(map.getContainer(), 'cwc-picking');
+            map.on('click', pickAt);
+        }
         if (typeof lat === 'number' && typeof lon === 'number') {
             placePickMarker([lat, lon]);
             map.setView([lat, lon], 13, {animate: false});
         }
-        map.on('click', function (event) {
-            var latlng = event.latlng.wrap();
-            placePickMarker(latlng);
-            if (bridge()) {
-                bridge().pickLocation(latlng.lat.toFixed(6), latlng.lng.toFixed(6));
-            }
-        });
         return true;
     }
 
