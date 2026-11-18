@@ -249,8 +249,11 @@ public final class AuthService {
         if (lastSuccess.isPresent() && lastSuccess.get().isAfter(since)) {
             since = lastSuccess.get();
         }
+        // A lock ends at lockedAt + duration and attempts at that very moment are no longer
+        // locked, so they must count: event times have millisecond precision, and counting
+        // starts strictly after the given time, hence the millisecond subtracted here.
         Optional<Instant> lastLockEnd = log.latest(SecurityEventType.LOGIN_LOCKED, key)
-                .map(lockedAt -> lockedAt.plus(lockout.lockDuration()));
+                .map(lockedAt -> lockedAt.plus(lockout.lockDuration()).minusMillis(1));
         if (lastLockEnd.isPresent() && lastLockEnd.get().isAfter(since)) {
             since = lastLockEnd.get();
         }

@@ -81,4 +81,50 @@ class GeoPointTest {
         assertEquals(Optional.empty(), GeoPoint.tryParse(null, null));
         assertEquals(Optional.empty(), GeoPoint.tryParse("91", "0"));
     }
+
+    @Test
+    void distanceToItselfIsZero() {
+        GeoPoint p = new GeoPoint(33.7756, -84.3963);
+        assertEquals(0.0, p.distanceKm(p), 1e-9);
+    }
+
+    @Test
+    void oneDegreeOfLatitudeIsAbout111Km() {
+        double expected = 2 * Math.PI * GeoPoint.EARTH_RADIUS_KM / 360;
+        assertEquals(expected, new GeoPoint(10, 20).distanceKm(new GeoPoint(11, 20)), 1e-6);
+        assertEquals(111.195, expected, 0.001);
+    }
+
+    @Test
+    void knownCityDistance() {
+        GeoPoint london = new GeoPoint(51.5074, -0.1278);
+        GeoPoint paris = new GeoPoint(48.8566, 2.3522);
+        assertEquals(343.5, london.distanceKm(paris), 1.0);
+        assertEquals(london.distanceKm(paris), paris.distanceKm(london), 1e-9);
+    }
+
+    @Test
+    void distanceAcrossTheAntimeridianIsShort() {
+        double oneDegree = 2 * Math.PI * GeoPoint.EARTH_RADIUS_KM / 360;
+        assertEquals(oneDegree, new GeoPoint(0, 179.5).distanceKm(new GeoPoint(0, -179.5)), 1e-6);
+    }
+
+    @Test
+    void antipodesAreHalfACircumferenceApart() {
+        double half = Math.PI * GeoPoint.EARTH_RADIUS_KM;
+        assertEquals(half, new GeoPoint(0, 0).distanceKm(new GeoPoint(0, 180)), 1e-6);
+        assertEquals(half, new GeoPoint(90, 0).distanceKm(new GeoPoint(-90, 0)), 1e-6);
+        assertEquals(half, new GeoPoint(45, 10).distanceKm(new GeoPoint(-45, -170)), 1e-6);
+    }
+
+    @Test
+    void longitudeDoesNotMatterAtThePole() {
+        assertEquals(0.0, new GeoPoint(90, 0).distanceKm(new GeoPoint(90, 123)), 1e-6);
+    }
+
+    @Test
+    void smallDistancesAreAccurate() {
+        // 0.001 degrees of latitude is about 111 m
+        assertEquals(0.111195, new GeoPoint(33.0, -84.0).distanceKm(new GeoPoint(33.001, -84.0)), 1e-5);
+    }
 }

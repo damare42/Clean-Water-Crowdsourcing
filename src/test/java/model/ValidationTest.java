@@ -2,6 +2,7 @@ package model;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -174,5 +175,64 @@ class ValidationTest {
                 "a@example.com", "a@example.com", "secret1", null));
         assertEquals(Optional.of(Validation.MSG_INVALID_PASSWORD), register("alice", AccountType.User,
                 "a@example.com", "a@example.com", null, null));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0, 0", "-0, 0", "0.5, 0.5", "+12, 12", " 7.25 , 7.25",
+            "1000000, 1000000", ".5, 0.5", "3., 3"})
+    void ppmParsesPlainDecimals(String text, double expected) {
+        assertEquals(expected, Validation.parseVirusPpm(text));
+        assertEquals(expected, Validation.parseContaminantPpm(text));
+        assertEquals(0, Double.compare(Math.abs(expected), Validation.parseVirusPpm(text)), "never -0.0");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "-1", "-0.001", "1000000.001", "1e3",
+            "NaN", "Infinity", "-Infinity", "0x10", "5d", "5f", "1,5", "abc"})
+    void ppmRejectsEverythingElse(String text) {
+        IllegalArgumentException virus = assertThrows(IllegalArgumentException.class,
+                () -> Validation.parseVirusPpm(text));
+        assertEquals(Validation.MSG_INVALID_VIRUS_PPM, virus.getMessage());
+        IllegalArgumentException contaminant = assertThrows(IllegalArgumentException.class,
+                () -> Validation.parseContaminantPpm(text));
+        assertEquals(Validation.MSG_INVALID_CONTAMINANT_PPM, contaminant.getMessage());
+    }
+
+    @Test
+    void ppmNullIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> Validation.parseVirusPpm(null));
+    }
+
+    @Test
+    void isValidPpm() {
+        assertTrue(Validation.isValidPpm(0));
+        assertTrue(Validation.isValidPpm(Validation.MAX_PPM));
+        assertFalse(Validation.isValidPpm(-Double.MIN_VALUE));
+        assertFalse(Validation.isValidPpm(Double.NaN));
+        assertFalse(Validation.isValidPpm(Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    void radiusMustBePositiveAndAtMost20000() {
+        assertEquals(1.0, Validation.parseRadiusKm("1"));
+        assertEquals(0.25, Validation.parseRadiusKm(" .25 "));
+        assertEquals(20000.0, Validation.parseRadiusKm("20000"));
+        for (String bad : new String[]{"0", "-1", "20000.5", "1e2", "NaN", "", null, "abc"}) {
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> Validation.parseRadiusKm(bad), String.valueOf(bad));
+            assertEquals(Validation.MSG_INVALID_RADIUS, e.getMessage());
+        }
+    }
+
+    @Test
+    void yearMustBeDigitsInRange() {
+        assertEquals(2016, Validation.parseYear("2016"));
+        assertEquals(1900, Validation.parseYear(" 1900 "));
+        assertEquals(9999, Validation.parseYear("9999"));
+        for (String bad : new String[]{"1899", "10000", "-2016", "+2016", "20.16", "２０１６", "", null, "year"}) {
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> Validation.parseYear(bad), String.valueOf(bad));
+            assertEquals(Validation.MSG_INVALID_YEAR, e.getMessage());
+        }
     }
 }

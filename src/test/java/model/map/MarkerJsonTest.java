@@ -1,18 +1,23 @@
 package model.map;
 
 import model.GeoPoint;
+import model.Report;
 import model.ReportField;
+import model.WaterPurityCondition;
+import model.WaterPurityReport;
 import model.WaterSourceCondition;
 import model.WaterSourceReport;
 import model.WaterSourceType;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarkerJsonTest {
@@ -26,7 +31,7 @@ class MarkerJsonTest {
 
     @Test
     void sourceReportMarkerHasAllFieldsInOrder() {
-        String json = MarkerJson.toJson(List.of(MapMarker.forSourceReport(report(7, "alice"), ZoneOffset.UTC)));
+        String json = MarkerJson.toJson(List.of(MapMarker.forReport(report(7, "alice"), ZoneOffset.UTC)));
 
         assertEquals("[{\"kind\":\"source\",\"id\":7,\"lat\":33.7,\"lon\":-84.39,"
                 + "\"title\":\"Water source report 7\",\"fields\":["
@@ -47,7 +52,7 @@ class MarkerJsonTest {
 
     @Test
     void markersKeepTheirOrder() {
-        List<MapMarker> markers = MapMarker.forSourceReports(
+        List<MapMarker> markers = MapMarker.forReports(
                 List.of(report(2, "bob"), report(1, "alice")), ZoneOffset.UTC);
 
         String json = MarkerJson.toJson(markers);
@@ -91,5 +96,58 @@ class MarkerJsonTest {
 
         assertTrue(json.chars().allMatch(c -> c >= 0x20 && c <= 0x7e), json);
         assertTrue(json.contains("\"lat\":-1.0E-5,\"lon\":179.5"), json);
+    }
+
+    @Test
+    void purityReportsGetTheirOwnKind() {
+        WaterPurityReport purity = new WaterPurityReport(4, "bob", Instant.EPOCH,
+                new GeoPoint(1.5, -2), WaterPurityCondition.Unsafe, 0.5, 12);
+
+        MapMarker marker = MapMarker.forReport(purity, ZoneOffset.UTC);
+
+        assertEquals(MapMarker.KIND_PURITY, marker.kind());
+        assertEquals(MapMarker.KIND_PURITY, MapMarker.kindOf(purity));
+        assertEquals(MapMarker.KIND_SOURCE, MapMarker.kindOf(report(1, "a")));
+        assertEquals(4, marker.id());
+        assertEquals("Water purity report 4", marker.title());
+        String json = MarkerJson.toJson(List.of(marker));
+        assertTrue(json.startsWith("[{\"kind\":\"purity\",\"id\":4,\"lat\":1.5,\"lon\":-2.0,"), json);
+        assertTrue(json.contains("{\"label\":\"Virus PPM\",\"value\":\"0.5\"}"), json);
+    }
+
+    @Test
+    void unknownReportKindsAreRejected() {
+        Report other = new Report() {
+            @Override
+            public int getReportNumber() {
+                return 1;
+            }
+
+            @Override
+            public String getReporter() {
+                return "x";
+            }
+
+            @Override
+            public Instant getReportedAt() {
+                return Instant.EPOCH;
+            }
+
+            @Override
+            public GeoPoint getLocation() {
+                return new GeoPoint(0, 0);
+            }
+
+            @Override
+            public String getTitle() {
+                return "x";
+            }
+
+            @Override
+            public List<ReportField> fields(ZoneId zone) {
+                return List.of();
+            }
+        };
+        assertThrows(IllegalArgumentException.class, () -> MapMarker.kindOf(other));
     }
 }

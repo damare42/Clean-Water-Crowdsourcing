@@ -3,6 +3,7 @@ package model.persistence;
 import model.Account;
 import model.AccountType;
 import model.Validation;
+import model.WaterPurityCondition;
 import model.WaterSourceCondition;
 import model.WaterSourceType;
 import org.junit.jupiter.api.Test;
@@ -261,5 +262,144 @@ class SqliteDatabaseTest {
         try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.inMemory())) {
             assertThrows(DataAccessException.class, () -> insertAccount(database, "root", "root", "Root"));
         }
+    }
+
+    /** The released version-1 schema, frozen here so the upgrade is tested against real v1 files. */
+    private static final List<String> SCHEMA_V1 = List.of("""
+            CREATE TABLE accounts (
+                username_key  TEXT    NOT NULL PRIMARY KEY
+                              CHECK (username_key <> '' AND username_key = lower(username_key)),
+                username      TEXT    NOT NULL,
+                account_type  TEXT    NOT NULL
+                              CHECK (account_type IN ('User', 'Worker', 'Manager', 'Admin')),
+                password_hash TEXT    NOT NULL,
+                first_name    TEXT    NOT NULL,
+                last_name     TEXT    NOT NULL,
+                email         TEXT    NOT NULL,
+                phone         TEXT    NOT NULL DEFAULT '',
+                address       TEXT    NOT NULL DEFAULT '',
+                CHECK (username_key = lower(username) OR username GLOB '*[^ -~]*')
+            )""", """
+            CREATE TABLE water_source_reports (
+                report_number   INTEGER NOT NULL PRIMARY KEY CHECK (report_number > 0),
+                reporter        TEXT    NOT NULL,
+                reported_at_ms  INTEGER NOT NULL,
+                latitude        REAL    NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+                longitude       REAL    NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+                water_type      TEXT    NOT NULL
+                                CHECK (water_type IN ('Lake', 'River', 'Creek', 'Well',
+                                                      'Stream', 'Pond', 'Oasis', 'Spout')),
+                water_condition TEXT    NOT NULL
+                                CHECK (water_condition IN ('Clear', 'Muddy', 'Potable', 'Waste'))
+            )""",
+            "INSERT INTO accounts (username_key, username, account_type, password_hash, first_name,"
+                    + " last_name, email, phone, address) VALUES ('alice', 'Alice', 'Worker', 'hash-a',"
+                    + " 'Alice', 'Smith', 'a@example.com', '555', 'Tech Square')",
+            "INSERT INTO accounts (username_key, username, account_type, password_hash, first_name,"
+                    + " last_name, email) VALUES ('root', 'root', 'Admin', 'hash-r', 'Root', 'Admin',"
+                    + " 'r@example.com')",
+            "INSERT INTO water_source_reports VALUES (1, 'Alice', 1476189045123, 33.77, -84.39, 'Lake', 'Potable')",
+            "INSERT INTO water_source_reports VALUES (2, 'Alice', 1476189046000, -1.5, 2.25, 'Well', 'Muddy')",
+            "PRAGMA user_version = 1");
+
+    @Test
+    void version1FileIsUpgradedKeepingItsData() throws Exception {
+        Path file = dir.resolve("v1.db");
+        try (Connection c = DriverManager.getConnection("jdbc:sqlite:" + file)) {
+            for (String sql : SCHEMA_V1) {
+                try (PreparedStatement statement = c.prepareStatement(sql)) {
+                    statement.execute();
+                }
+            }
+        }
+
+        try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.file(file))) {
+            assertEquals(2, database.schemaVersion());
+            assertTrue(tables(database).containsAll(List.of("water_purity_reports", "security_log")));
+            SqliteAccountRepository accounts = new SqliteAccountRepository(database);
+            Account alice = accounts.findById("ALICE").orElseThrow();
+            assertEquals("Alice", alice.getId());
+            assertEquals(AccountType.Worker, alice.getType());
+            assertEquals("Tech Square", alice.getAddress());
+            assertEquals(java.util.Optional.of("hash-a"), accounts.findPasswordHash("alice"));
+            assertEquals(false, accounts.isBanned("alice"), "existing accounts start unbanned");
+            assertTrue(accounts.existsByType(AccountType.Admin));
+            SqliteReportRepository reports = new SqliteReportRepository(database);
+            assertEquals(2, reports.findAll().size());
+            assertEquals(java.time.Instant.ofEpochMilli(1476189045123L),
+                    reports.findByNumber(1).orElseThrow().getReportedAt());
+            assertEquals(WaterSourceCondition.Muddy, reports.findByNumber(2).orElseThrow().getCondition());
+            assertEquals(3, reports.nextReportNumber());
+            assertEquals(1, new SqlitePurityReportRepository(database).nextReportNumber());
+            assertTrue(accounts.setBanned("alice", true));
+        }
+        try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.file(file))) {
+            assertEquals(2, database.schemaVersion());
+            assertTrue(new SqliteAccountRepository(database).isBanned("alice"), "reopening does not migrate again");
+        }
+    }
+
+    private static int insertPurity(SqliteDatabase database, String condition, double virus, double contaminant) {
+        return database.execute(c -> {
+            try (PreparedStatement statement = c.prepareStatement(
+                    "INSERT INTO water_purity_reports VALUES"
+                            + " ((SELECT COALESCE(MAX(report_number), 0) + 1 FROM water_purity_reports),"
+                            + " 'alice', 0, 0, 0, ?, ?, ?)")) {
+                statement.setString(1, condition);
+                statement.setDouble(2, virus);
+                statement.setDouble(3, contaminant);
+                return statement.executeUpdate();
+            }
+        });
+    }
+
+    @Test
+    void schemaAcceptsValidPurityRows() {
+        try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.inMemory())) {
+            for (WaterPurityCondition condition : WaterPurityCondition.values()) {
+                assertEquals(1, insertPurity(database, condition.name(), 0, 1_000_000));
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"safe, 0, 0", "Clean, 0, 0", "Safe, -1, 0", "Safe, 0, -0.5", "Safe, 1000000.5, 0",
+            "Safe, Infinity, 0", "Safe, 0, Infinity", "Safe, NaN, 0", "Safe, -Infinity, 0"})
+    void schemaRejectsInvalidPurityRows(String condition, double virus, double contaminant) {
+        try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.inMemory())) {
+            assertThrows(DataAccessException.class, () -> insertPurity(database, condition, virus, contaminant));
+        }
+    }
+
+    @Test
+    void schemaRejectsOtherBannedValues() {
+        try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.inMemory())) {
+            insertAccount(database, "alice", "alice", "User");
+            assertThrows(DataAccessException.class, () -> database.execute(c -> {
+                try (PreparedStatement statement = c.prepareStatement(
+                        "UPDATE accounts SET banned = 2 WHERE username_key = 'alice'")) {
+                    return statement.executeUpdate();
+                }
+            }));
+        }
+    }
+
+    @Test
+    void symbolicLinksAreNotFollowedWhenTighteningPermissions() throws Exception {
+        assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"));
+        Path target = Files.createFile(dir.resolve("elsewhere.db"));
+        Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rw-r--r--"));
+        Path targetDir = Files.createDirectories(dir.resolve("real-dir"));
+        Files.setPosixFilePermissions(targetDir, PosixFilePermissions.fromString("rwxr-xr-x"));
+        Path home = Files.createDirectories(dir.resolve("home"));
+        Path appDir = Files.createSymbolicLink(home.resolve(".cwc"), targetDir);
+        Files.createSymbolicLink(targetDir.resolve("cwc.db"), target);
+
+        SqliteDatabase.open(DatabaseLocation.resolve(null, home.toString())).close();
+
+        assertTrue(Files.isSymbolicLink(appDir));
+        assertEquals("rw-r--r--", PosixFilePermissions.toString(Files.getPosixFilePermissions(target)));
+        assertEquals("rwxr-xr-x", PosixFilePermissions.toString(Files.getPosixFilePermissions(targetDir)));
+        assertTrue(Files.size(target) > 0, "the database itself still works through the link");
     }
 }

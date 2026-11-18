@@ -2,11 +2,16 @@ package fxapp;
 
 import model.Account;
 import model.AccountType;
+import model.GeoPoint;
+import model.WaterPurityCondition;
 import model.WaterSourceCondition;
 import model.WaterSourceReport;
 import model.WaterSourceType;
 import model.persistence.DatabaseLocation;
 import model.security.PasswordHasher;
+import model.security.SecurityEvent;
+import model.security.SecurityEventType;
+import model.service.LoginResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -71,6 +76,35 @@ class AppContextTest {
 
             assertEquals(1, context.getReportService().listReports(bob).size());
             assertTrue(context.getAuthService().login("BOB", pw("secret1")).isPresent());
+        }
+    }
+
+    @Test
+    void purityReportsBansAndSecurityLogSurviveRestart() {
+        DatabaseLocation location = DatabaseLocation.file(dir.resolve("cwc.db"));
+        try (AppContext first = AppContext.open(location, HASHER, CLOCK, ZoneOffset.UTC)) {
+            Account root = first.getAuthService().createFirstAdministrator("root", "Root", "Admin",
+                    "r@example.com", "r@example.com", pw("admin123"), pw("admin123"));
+            Account wendy = first.getAuthService().register("wendy", AccountType.Worker, "Wendy", "Ward",
+                    "w@example.com", "w@example.com", pw("secret1"), pw("secret1"));
+            first.getPurityReportService().submit(wendy, new GeoPoint(33.7, -84.4),
+                    WaterPurityCondition.Treatable, 3, 4);
+            first.getAccountService().setBanned(root, "wendy", true);
+        }
+        try (AppContext second = AppContext.open(location, HASHER, CLOCK, ZoneOffset.UTC)) {
+            assertTrue(second.getAuthService().hasAdministrator());
+            assertEquals(LoginResult.Status.BANNED,
+                    second.getAuthService().authenticate("wendy", pw("secret1")).getStatus());
+            Account root = second.getAuthService().login("root", pw("admin123")).orElseThrow();
+            List<SecurityEventType> types = second.getSecurityLog().recentEvents(root).stream()
+                    .map(SecurityEvent::type).toList();
+            assertEquals(List.of(SecurityEventType.LOGIN_SUCCESS, SecurityEventType.LOGIN_FAILURE,
+                    SecurityEventType.ACCOUNT_BANNED, SecurityEventType.REGISTRATION,
+                    SecurityEventType.ADMIN_CREATED), types);
+            second.getAccountService().setBanned(root, "wendy", false);
+            Account wendy = second.getAuthService().login("wendy", pw("secret1")).orElseThrow();
+            assertEquals(1, second.getPurityReportService().listReports(wendy).size());
+            assertEquals(2, second.getPurityReportService().nextReportNumber());
         }
     }
 }

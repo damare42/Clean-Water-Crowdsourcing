@@ -1,12 +1,14 @@
 package model.persistence;
 
 import model.Account;
+import model.AccountSummary;
 import model.AccountType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -173,5 +175,88 @@ abstract class AccountRepositoryContract {
         assertSameAccount(stored, repository.findById("O'BRIEN").orElseThrow());
         assertEquals(Optional.of("hash'with\"quotes"), repository.findPasswordHash("o'brien"));
         assertTrue(repository.findById("x' OR '1'='1").isEmpty());
+    }
+
+    @Test
+    void newAccountsAreNotBanned() {
+        repository.add(account(AccountType.User, "alice"), "h");
+
+        assertFalse(repository.isBanned("alice"));
+        assertFalse(repository.isBanned("nobody"));
+        assertFalse(repository.isBanned(null));
+    }
+
+    @Test
+    void banAndUnbanIgnoringCaseKeepsEverythingElse() {
+        Account alice = account(AccountType.Worker, "Alice");
+        repository.add(alice, "hash-1");
+
+        assertTrue(repository.setBanned("ALICE", true));
+        assertTrue(repository.isBanned("alice"));
+        assertSameAccount(alice, repository.findById("alice").orElseThrow());
+        assertEquals(Optional.of("hash-1"), repository.findPasswordHash("alice"));
+        assertTrue(repository.setBanned("alice", true), "banning twice is fine");
+        repository.updateProfile(alice);
+        repository.updatePasswordHash("alice", "hash-2");
+        assertTrue(repository.isBanned("alice"), "profile and hash updates keep the ban");
+
+        assertTrue(repository.setBanned(" alice ", false));
+        assertFalse(repository.isBanned("Alice"));
+        assertFalse(repository.setBanned("nobody", true));
+        assertFalse(repository.setBanned(null, true));
+    }
+
+    @Test
+    void deleteRemovesAccountAndHashAndFreesTheId() {
+        repository.add(account(AccountType.User, "Alice"), "hash-1");
+        repository.add(account(AccountType.User, "bob"), "hash-2");
+
+        assertTrue(repository.delete("ALICE"));
+        assertFalse(repository.existsById("alice"));
+        assertTrue(repository.findPasswordHash("alice").isEmpty());
+        assertFalse(repository.delete("alice"));
+        assertFalse(repository.delete(null));
+        assertTrue(repository.existsById("bob"));
+        repository.add(account(AccountType.Manager, "alice"), "hash-3");
+        assertEquals(AccountType.Manager, repository.findById("alice").orElseThrow().getType());
+        assertFalse(repository.isBanned("alice"));
+    }
+
+    @Test
+    void summariesListEveryAccountOrderedByIdIgnoringCase() {
+        repository.add(account(AccountType.Manager, "carol"), "h");
+        repository.add(account(AccountType.User, "Alice"), "h");
+        repository.add(account(AccountType.Admin, "bob"), "h");
+        repository.setBanned("carol", true);
+
+        List<AccountSummary> summaries = repository.findAllSummaries();
+
+        assertEquals(List.of("Alice", "bob", "carol"), summaries.stream().map(AccountSummary::id).toList());
+        assertEquals(new AccountSummary("carol", AccountType.Manager, "First", "Last", "carol@example.com", true),
+                summaries.get(2));
+        assertEquals("Banned", summaries.get(2).status());
+        assertEquals("Active", summaries.get(0).status());
+        assertThrows(UnsupportedOperationException.class, summaries::clear);
+    }
+
+    @Test
+    void existsByType() {
+        assertFalse(repository.existsByType(AccountType.Admin));
+        repository.add(account(AccountType.User, "alice"), "h");
+        assertFalse(repository.existsByType(AccountType.Admin));
+        assertTrue(repository.existsByType(AccountType.User));
+    }
+
+    @Test
+    void addFirstOfTypeOnlyStoresTheFirst() {
+        assertTrue(repository.addFirstOfType(account(AccountType.Admin, "root"), "h1"));
+        assertFalse(repository.addFirstOfType(account(AccountType.Admin, "root2"), "h2"));
+        assertFalse(repository.existsById("root2"));
+        assertTrue(repository.existsByType(AccountType.Admin));
+
+        repository.add(account(AccountType.User, "alice"), "h");
+        assertThrows(DuplicateKeyException.class,
+                () -> repository.addFirstOfType(account(AccountType.Manager, "ALICE"), "h"));
+        assertFalse(repository.existsByType(AccountType.Manager));
     }
 }

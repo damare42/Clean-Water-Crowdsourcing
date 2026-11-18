@@ -2,6 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <!--
+        Content Security Policy. It cannot restrict where scripts, styles and images come
+        from: in the packaged jar this page and its files have jar: URLs, and the WebKit in
+        JavaFX refuses jar: subresources under every source expression we tried ('self',
+        jar:, *, and sha256 hashes with integrity attributes), which would leave the map
+        blank. (script-src/style-src "jar: file:" works under mvn javafx:run only.) So the
+        policy only blocks what the map never needs: network requests from scripts, frames,
+        workers, plug-ins, forms and <base>. Images from any host stay allowed (the tiles
+        need them), so this is defence in depth, not a complete barrier.
+        The compensating control is on the Java side (controller.LeafletMap): the page never
+        receives user data as HTML (only JSON shown with textContent), pop-ups are blocked,
+        any navigation away from this page is reverted, and the Java bridge is only given
+        to this exact page.
+    -->
+    <meta http-equiv="Content-Security-Policy"
+          content="connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
     <title>Water source map</title>
     <link rel="stylesheet" href="leaflet/leaflet.css">
     <link rel="stylesheet" href="map.css">

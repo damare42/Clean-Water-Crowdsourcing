@@ -67,17 +67,4 @@ public record MapMarker(String kind, int id, GeoPoint position, String title, Li
         return reports.stream().map(r -> forReport(r, zone)).toList();
     }
 
-    /**
-     * @see #forReport
-     */
-    public static MapMarker forSourceReport(WaterSourceReport report, ZoneId zone) {
-        return forReport(report, zone);
-    }
-
-    /**
-     * @see #forReports
-     */
-    public static List<MapMarker> forSourceReports(List<WaterSourceReport> reports, ZoneId zone) {
-        return forReports(reports, zone);
-    }
 }

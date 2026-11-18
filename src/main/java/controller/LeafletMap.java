@@ -116,7 +116,15 @@ public final class LeafletMap {
     }
 
     private boolean isBundledPage(String location) {
-        return pageUrl != null && pageUrl.equals(location);
+        return pageUrl != null && location != null && canonical(pageUrl).equals(canonical(location));
+    }
+
+    /**
+     * WebKit reports {@code file:/x} (as returned by {@link Class#getResource}) as
+     * {@code file:///x}, also inside {@code jar:} URLs; this writes both the same way.
+     */
+    static String canonical(String url) {
+        return url.replace("file:///", "file:/");
     }
 
     /**
