@@ -2,11 +2,11 @@ package fxapp;
 
 
 import controller.AppViewController;
-
-
+import controller.LoginController;
+import controller.ProfileController;
 import controller.RegistrationController;
-import model.Account;
-import controller.*;
+import controller.WSRViewerController;
+import controller.WaterSourceReportController;
 import controller.WelcomeController;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -14,20 +14,23 @@ import javafx.fxml.Initializable;
 import javafx.fxml.JavaFXBuilderFactory;
 import javafx.scene.Scene;
 import javafx.scene.layout.AnchorPane;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import model.Account;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javafx.stage.Modality;
-import java.io.IOException;
-import java.net.URL;
 
 /**
  * the main method of the application that deals with the creation of windows
  * and handling of the interactions between the views and the controllers
  */
 public class Main extends Application {
+    private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
     /** the main container for the application window */
     private Stage stage;
     private Account loggedAccount;
@@ -45,7 +48,7 @@ public class Main extends Application {
             gotoWelcome();
             primaryStage.show();
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
 
     }
@@ -64,7 +67,7 @@ public class Main extends Application {
             WelcomeController welcome = (WelcomeController) replaceSceneContent("/view/WelcomePage.fxml");
             welcome.setApp(this);
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
     }
 
@@ -76,7 +79,7 @@ public class Main extends Application {
             RegistrationController registration = (RegistrationController) replaceSceneContent("/view/RegisterPage.fxml");
             registration.setApp(this);
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
     }
 
@@ -88,7 +91,7 @@ public class Main extends Application {
             ProfileController profile = (ProfileController) replaceSceneContent("/view/ProfilePage.fxml");
             profile.setApp(this);
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
     }
 
@@ -100,7 +103,7 @@ public class Main extends Application {
             AppViewController appView = (AppViewController) replaceSceneContent("/view/appview.fxml");
             appView.setApp(this);
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
     }
 
@@ -112,7 +115,7 @@ public class Main extends Application {
             WaterSourceReportController waterSourceReportController = (WaterSourceReportController) replaceSceneContent("/view/WaterSourceReport.fxml");
             waterSourceReportController.setApp(this);
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
     }
 
@@ -124,29 +127,36 @@ public class Main extends Application {
             WSRViewerController WSRViewers = (WSRViewerController) replaceSceneContent("/view/WSRViewer.fxml");
             WSRViewers.setApp(this);
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Could not load scene", ex);
         }
     }
 
     /**
-     * a method to check if the user logged into the app
-     * @param userId the user trying to log in
-     * @return whether the user logged in or not
+     * Logs in a registered account and shows the app view.
+     * @param userId the id of the account to log in
+     * @return true if the account exists and was logged in, false otherwise
      */
     public boolean accountLogging(String userId) {
-        loggedAccount = Account.of(userId);
+        Optional<Account> account = Account.find(userId);
+        if (account.isEmpty()) {
+            return false;
+        }
+        loggedAccount = account.get();
         gotoApp();
         return true;
     }
 
     /**
-     * a method to check if the user updated their information on the
-     * registration page of the app
-     * @param userId the user that is logged in
-     * @return whether or not the data was updated
+     * Logs in a just-registered account and shows its profile page.
+     * @param userId the id of the registered account
+     * @return true if the account exists and was logged in, false otherwise
      */
     public boolean registrationLogging(String userId) {
-        loggedAccount = Account.of(userId);
+        Optional<Account> account = Account.find(userId);
+        if (account.isEmpty()) {
+            return false;
+        }
+        loggedAccount = account.get();
         gotoProfile();
         return true;
     }
@@ -218,7 +228,7 @@ public class Main extends Application {
             return controller.confirmLoginClicked();
 
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Could not load the login dialog", e);
             return false;
         }
     }
@@ -228,10 +238,6 @@ public class Main extends Application {
      * @param args any arguments that may be applied to the program
      */
     public static void main(String[] args) {
-
-
-
-
         launch(args);
     }
 }

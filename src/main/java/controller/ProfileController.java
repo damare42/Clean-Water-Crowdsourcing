@@ -1,24 +1,23 @@
 package controller;
 
 import fxapp.Main;
+import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
-import java.util.ResourceBundle;
-import javafx.animation.FadeTransition;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
-import javafx.fxml.FXML;
-import java.net.URL;
-import javafx.fxml.Initializable;
-import javafx.scene.control.*;
-import javafx.scene.layout.AnchorPane;
-import javafx.util.Duration;
 import model.Account;
 
+import java.net.URL;
+import java.util.ResourceBundle;
 
-public class ProfileController extends AnchorPane implements Initializable{
+/**
+ * Controls the profile page, where the logged-in user edits their details.
+ */
+public class ProfileController extends AnchorPane implements Initializable {
 
     @FXML
     private TextField accountType;
@@ -40,10 +39,10 @@ public class ProfileController extends AnchorPane implements Initializable{
     private Main application;
 
     /**
-     * sets the Registration page
-     * @param application the main application of welcome page
+     * Sets up the profile page with the logged-in account's details.
+     * @param application the main application
      */
-    public void setApp(Main application){
+    public void setApp(Main application) {
         this.application = application;
         Account loggedAccount = application.getLoggedAccount();
         accountType.setText(loggedAccount.getType().name());
@@ -52,41 +51,30 @@ public class ProfileController extends AnchorPane implements Initializable{
         lname.setText(loggedAccount.getLname());
         email.setText(loggedAccount.getEmail());
         phone.setText(loggedAccount.getPhone());
-        if (loggedAccount.getAddress() != null) {
-            address.setText(loggedAccount.getAddress());
-        }
+        address.setText(loggedAccount.getAddress());
     }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
     }
 
     /**
-     * Saves the account and name when save is pressed in the profile display
-     *
+     * Saves the profile. If any field is invalid nothing is saved and the error is shown.
      */
     @FXML
     private void savePressed() {
-        Account loggedAccount = application.getLoggedAccount();
-        String emailRegex = "^[_A-Za-z0-9-]+(\\.[_A-Za-z0-9-]+)" +
-                "*@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$";
-        if (!email.getText().matches(emailRegex)) {
-            message.setText("Invalid email address");
-        } else if (!email.getText().matches(emailRegex)) {
-            message.setText("Invalid email address");
-        } else {
-            loggedAccount.setEmail(email.getText());
-            message.setText("profile updated");
+        try {
+            application.getLoggedAccount().updateProfile(fname.getText(), lname.getText(),
+                    email.getText(), phone.getText(), address.getText());
+            message.setText("Profile updated");
+        } catch (IllegalArgumentException e) {
+            message.setText(e.getMessage());
         }
-        loggedAccount.setFname(fname.getText());
-        loggedAccount.setLname(lname.getText());
-
-        loggedAccount.setPhone(phone.getText());
-        loggedAccount.setAddress(address.getText());
         message.setVisible(true);
     }
 
     /**
-     * Goes back to the previous page when the back button is pressed
+     * Goes back to the app view when the back button is pressed
      */
     @FXML
     private void backToRegPressed() {
@@ -94,8 +82,8 @@ public class ProfileController extends AnchorPane implements Initializable{
     }
 
     /**
-     *
-     * @param event
+     * Goes back when ENTER is pressed on the back button
+     * @param event the key event
      */
     @FXML
     private void backKeyPressed(KeyEvent event) {
@@ -103,9 +91,10 @@ public class ProfileController extends AnchorPane implements Initializable{
             backToRegPressed();
         }
     }
+
     /**
-     *
-     * @param event
+     * Saves when ENTER is pressed on the save button
+     * @param event the key event
      */
     @FXML
     private void saveEntered(KeyEvent event) {
@@ -113,5 +102,4 @@ public class ProfileController extends AnchorPane implements Initializable{
             savePressed();
         }
     }
-
 }

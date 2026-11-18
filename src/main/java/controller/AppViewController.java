@@ -7,7 +7,6 @@ import javafx.scene.control.Label;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 
-
 import java.net.URL;
 import java.util.ResourceBundle;
 
@@ -51,7 +50,7 @@ public class AppViewController implements Initializable {
     @FXML
     private void usernamePressed() {
         application.gotoProfile();
-    };
+    }
 
     /**
      * Goes to the water source report creation pation

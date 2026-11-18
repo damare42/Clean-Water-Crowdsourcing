@@ -39,7 +39,7 @@ public class WelcomeController extends AnchorPane implements Initializable {
      */
     @FXML
     private void loginPressed() {
-        boolean okClicked = application.showLoginDialog();
+        application.showLoginDialog();
     }
 
     /**

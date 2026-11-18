@@ -10,7 +10,7 @@ Data is currently held in memory only and is lost when the app exits.
 ## Prerequisites
 
 - JDK 17 or newer
-- Maven 3.8 or newer
+- Maven 3.6.3 or newer (checked by the build via maven-enforcer-plugin)
 
 The OpenJFX libraries are downloaded by Maven for your platform; no separate JavaFX
 install is needed.
@@ -26,6 +26,10 @@ mvn verify
 ```
 
 Tests cover the model classes only and do not need a display.
+
+Run the app with `mvn javafx:run`. The jar built by `mvn verify` is not runnable on its
+own with `java -jar`: JavaFX must be on the module path, which the JavaFX Maven plugin
+sets up for you.
 
 ## Project layout
 

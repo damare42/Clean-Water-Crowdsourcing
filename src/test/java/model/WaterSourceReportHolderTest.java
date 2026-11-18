@@ -3,79 +3,121 @@ package model;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import java.util.List;
 
-/**
- * Characterisation tests for the current behaviour of {@link WaterSourceReportHolder}.
- */
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 class WaterSourceReportHolderTest {
 
     @BeforeEach
     void clearStaticState() {
-        WaterSourceReportHolder.reports.clear();
-        WaterSourceReport.reportList.clear();
+        WaterSourceReportHolder.clear();
     }
 
-    private static WaterSourceReport report() {
-        return new WaterSourceReport("alice", "10/11/2016", "12:30", "-84.39", "33.77",
+    private static WaterSourceReport submit(String user) {
+        return WaterSourceReportHolder.submit(user, "2016/10/11", "12:30", 33.77, -84.39,
                 WaterSourceType.Pond, WaterSourceCondition.Waste);
     }
 
-    @Test
-    void addReportStoresReportUnderGivenNumber() {
-        WaterSourceReport report = report();
+    private static WaterSourceReport report(int number) {
+        return new WaterSourceReport(number, "alice", "2016/10/11", "12:30", 33.77, -84.39,
+                WaterSourceType.Pond, WaterSourceCondition.Waste);
+    }
 
-        WaterSourceReportHolder.addReport(report.getReportNumber(), report);
-
-        assertEquals(1, WaterSourceReportHolder.reports.size());
-        assertSame(report, WaterSourceReportHolder.reports.get(report.getReportNumber()));
+    private static List<Integer> numbers() {
+        return WaterSourceReportHolder.getReports().stream()
+                .map(WaterSourceReport::getReportNumber).toList();
     }
 
     @Test
-    void addReportStoresMultipleReports() {
-        WaterSourceReport first = report();
-        WaterSourceReport second = report();
-
-        WaterSourceReportHolder.addReport(first.getReportNumber(), first);
-        WaterSourceReportHolder.addReport(second.getReportNumber(), second);
-
-        assertEquals(2, WaterSourceReportHolder.reports.size());
-        assertSame(first, WaterSourceReportHolder.reports.get(first.getReportNumber()));
-        assertSame(second, WaterSourceReportHolder.reports.get(second.getReportNumber()));
+    void numberingStartsAtOne() {
+        assertEquals(1, WaterSourceReportHolder.nextReportNumber());
+        assertTrue(WaterSourceReportHolder.getReports().isEmpty());
     }
 
     @Test
-    void addReportWithExistingKeyReplacesReport() {
-        WaterSourceReport first = report();
-        WaterSourceReport second = report();
+    void submitAssignsSequentialNumbers() {
+        WaterSourceReport first = submit("alice");
+        WaterSourceReport second = submit("bob");
+        WaterSourceReport third = submit("carol");
 
-        WaterSourceReportHolder.addReport(7, first);
-        WaterSourceReportHolder.addReport(7, second);
-
-        assertEquals(1, WaterSourceReportHolder.reports.size());
-        assertSame(second, WaterSourceReportHolder.reports.get(7));
+        assertEquals(1, first.getReportNumber());
+        assertEquals(2, second.getReportNumber());
+        assertEquals(3, third.getReportNumber());
+        assertEquals(4, WaterSourceReportHolder.nextReportNumber());
+        assertEquals(List.of(first, second, third), WaterSourceReportHolder.getReports());
     }
 
     @Test
-    void addReportUsesCallerSuppliedKeyNotReportNumber() {
-        // Current behaviour: the key is whatever the caller passes; it is not checked
-        // against the report's own number.
-        WaterSourceReport report = report();
+    void clearResetsNumbering() {
+        submit("alice");
+        submit("bob");
 
-        WaterSourceReportHolder.addReport(-1, report);
+        WaterSourceReportHolder.clear();
 
-        assertSame(report, WaterSourceReportHolder.reports.get(-1));
-        assertNull(WaterSourceReportHolder.reports.get(report.getReportNumber()));
+        assertEquals(1, submit("carol").getReportNumber());
     }
 
     @Test
-    void addReportDoesNotTouchWaterSourceReportList() {
-        WaterSourceReport report = report();
+    void submitWithInvalidDataStoresNothing() {
+        assertThrows(IllegalArgumentException.class,
+                () -> WaterSourceReportHolder.submit("alice", "d", "t", 91, 0,
+                        WaterSourceType.Lake, WaterSourceCondition.Clear));
+        assertThrows(IllegalArgumentException.class,
+                () -> WaterSourceReportHolder.submit("alice", "d", "t", 0, 0,
+                        null, WaterSourceCondition.Clear));
 
-        WaterSourceReportHolder.addReport(report.getReportNumber(), report);
+        assertTrue(WaterSourceReportHolder.getReports().isEmpty());
+        assertEquals(1, WaterSourceReportHolder.nextReportNumber());
+    }
 
-        assertEquals(0, WaterSourceReport.reportList.size());
+    @Test
+    void addReportKeysByReportNumber() {
+        WaterSourceReport report = report(5);
+
+        WaterSourceReportHolder.addReport(report);
+
+        assertSame(report, WaterSourceReportHolder.getReports().get(0));
+    }
+
+    @Test
+    void addReportRejectsDuplicateNumber() {
+        WaterSourceReport original = report(5);
+        WaterSourceReportHolder.addReport(original);
+
+        assertThrows(IllegalArgumentException.class, () -> WaterSourceReportHolder.addReport(report(5)));
+        assertEquals(List.of(original), WaterSourceReportHolder.getReports());
+    }
+
+    @Test
+    void reportsAreOrderedByNumberRegardlessOfInsertionOrder() {
+        WaterSourceReportHolder.addReport(report(10));
+        WaterSourceReportHolder.addReport(report(2));
+        WaterSourceReportHolder.addReport(report(7));
+
+        assertEquals(List.of(2, 7, 10), numbers());
+    }
+
+    @Test
+    void nextNumberIsOneMoreThanHighest() {
+        WaterSourceReportHolder.addReport(report(2));
+        WaterSourceReportHolder.addReport(report(10));
+
+        assertEquals(11, WaterSourceReportHolder.nextReportNumber());
+        assertEquals(11, submit("alice").getReportNumber());
+        assertEquals(List.of(2, 10, 11), numbers());
+    }
+
+    @Test
+    void getReportsIsUnmodifiableSnapshot() {
+        submit("alice");
+        List<WaterSourceReport> snapshot = WaterSourceReportHolder.getReports();
+
+        assertThrows(UnsupportedOperationException.class, () -> snapshot.add(report(9)));
+        submit("bob");
+        assertEquals(1, snapshot.size());
     }
 }

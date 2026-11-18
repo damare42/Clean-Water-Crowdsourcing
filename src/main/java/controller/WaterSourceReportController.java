@@ -1,30 +1,32 @@
 package controller;
 
+import fxapp.Main;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import fxapp.Main;
-import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.ResourceBundle;
-
-import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
-import model.*;
+import model.Validation;
+import model.WaterSourceCondition;
+import model.WaterSourceReportHolder;
+import model.WaterSourceType;
+
+import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ResourceBundle;
 
 /**
  * Created by Sean on 10/6/2016.
- * A Controller class to handle the Water Source Report
+ * A Controller class to handle the Water Source Report form
  */
 public class WaterSourceReportController extends AnchorPane implements Initializable {
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("H:mm");
+
     private Main application;
-    private WaterSourceReport report;
     @FXML
     private Label username;
     @FXML
@@ -38,17 +40,11 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
     @FXML
     private ComboBox<WaterSourceCondition> condition;
     @FXML
-    private Button back;
-    @FXML
-    private Button submitReport;
-    @FXML
     private TextField latitude;
     @FXML
     private TextField longitude;
-
-
-    private final ObservableList<WaterSourceCondition> waterSourceConditions = FXCollections.observableArrayList(WaterSourceCondition.values());
-    private final ObservableList<WaterSourceType> waterSourceTypes = FXCollections.observableArrayList(WaterSourceType.values());
+    @FXML
+    private Label errorMessage;
 
     /**
      * Setup the main application link so we can call methods there
@@ -56,23 +52,18 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
      */
     public void setApp(Main application) {
         this.application = application;
-        Account loggedAccount = application.getLoggedAccount();
-        SimpleDateFormat dateformatter = new SimpleDateFormat("yyyy/MM/dd");
-        SimpleDateFormat timeFormatter = new SimpleDateFormat("H:mm");
-        Date theDate = new Date();
-        date.setText(dateformatter.format(theDate));
-        time.setText(timeFormatter.format(theDate));
-        username.setText(loggedAccount.getId());
-        latitude.setText("1");
-        longitude.setText("2");
-
-
+        username.setText(application.getLoggedAccount().getId());
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        type.setItems(waterSourceTypes);
-        condition.setItems(waterSourceConditions);
+        type.setItems(FXCollections.observableArrayList(WaterSourceType.values()));
+        condition.setItems(FXCollections.observableArrayList(WaterSourceCondition.values()));
+        LocalDateTime now = LocalDateTime.now();
+        date.setText(DATE_FORMAT.format(now));
+        time.setText(TIME_FORMAT.format(now));
+        number.setText(String.valueOf(WaterSourceReportHolder.nextReportNumber()));
+        errorMessage.setText("");
     }
 
     /**
@@ -84,14 +75,19 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
     }
 
     /**
-     * submits the report to the server
+     * Validates and stores the report, or shows the first validation error.
      */
     @FXML
-    private void submitReport () {
-        report = new WaterSourceReport(username.getText(), date.getText(),
-                time.getText(), longitude.getText(), latitude.getText(),
-                type.getValue(), condition.getValue());
-        WaterSourceReportHolder.addReport(report.getReportNumber(), report);
-        application.gotoApp();
+    private void submitReport() {
+        try {
+            double lat = Validation.parseLatitude(latitude.getText());
+            double lng = Validation.parseLongitude(longitude.getText());
+            WaterSourceReportHolder.submit(username.getText(), date.getText(), time.getText(),
+                    lat, lng, type.getValue(), condition.getValue());
+            application.gotoApp();
+        } catch (IllegalArgumentException e) {
+            errorMessage.setText(e.getMessage());
+            errorMessage.setVisible(true);
+        }
     }
 }

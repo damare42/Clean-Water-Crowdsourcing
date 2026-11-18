@@ -6,11 +6,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Characterisation tests for the current behaviour of {@link Authenticator}.
- */
 class AuthenticatorTest {
 
     @BeforeEach
@@ -36,16 +34,16 @@ class AuthenticatorTest {
     }
 
     @Test
-    void addAccountWithSameIdOverwritesPreviousEntry() {
+    void addAccountWithTakenIdIsRejectedAndKeepsOriginal() {
         Account first = account("alice");
-        Account second = account("alice");
-
         Authenticator.addAccount(first, "one");
-        Authenticator.addAccount(second, "two");
 
-        assertEquals("two", Authenticator.ACCOUNTS.get("alice"));
-        assertSame(second, Account.accountList.get("alice"));
-        assertEquals(1, Account.accountList.size());
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> Authenticator.addAccount(account("alice"), "two"));
+
+        assertEquals(Validation.MSG_ID_TAKEN, e.getMessage());
+        assertEquals("one", Authenticator.ACCOUNTS.get("alice"));
+        assertSame(first, Account.accountList.get("alice"));
     }
 
     @Test
@@ -79,31 +77,65 @@ class AuthenticatorTest {
     }
 
     @Test
-    void validateIdReturnsTrueWhenIdIsFree() {
-        assertTrue(Authenticator.validateID("alice"));
+    void isIdAvailableWhenIdIsFree() {
+        assertTrue(Authenticator.isIdAvailable("alice"));
     }
 
     @Test
-    void validateIdReturnsFalseWhenIdIsTaken() {
+    void isIdAvailableIsFalseForRegisteredId() {
         Authenticator.addAccount(account("alice"), "secret");
 
-        assertFalse(Authenticator.validateID("alice"));
-        assertTrue(Authenticator.validateID("bob"));
+        assertFalse(Authenticator.isIdAvailable("alice"));
+        assertTrue(Authenticator.isIdAvailable("bob"));
     }
 
     @Test
-    void validateIdOnlyLooksAtAccountListNotPasswordMap() {
-        // Current behaviour: an id present only in the password map is reported as free.
-        Authenticator.ACCOUNTS.put("ghost", "pw");
+    void isIdAvailableChecksBothMaps() {
+        Authenticator.ACCOUNTS.put("onlyPassword", "pw");
+        Account.accountList.put("onlyAccount", account("onlyAccount"));
 
-        assertTrue(Authenticator.validateID("ghost"));
+        assertFalse(Authenticator.isIdAvailable("onlyPassword"));
+        assertFalse(Authenticator.isIdAvailable("onlyAccount"));
     }
 
     @Test
-    void validateIdTreatsIdAsTakenAfterAccountOfCreatesIt() {
-        // Current behaviour: Account.of registers a placeholder account, which then blocks the id.
-        Account.of("phantom");
+    void isIdAvailableIsFalseForNull() {
+        assertFalse(Authenticator.isIdAvailable(null));
+    }
 
-        assertFalse(Authenticator.validateID("phantom"));
+    @Test
+    void registerCreatesAndStoresSubclassForType() {
+        Account account = Authenticator.register("worker1", AccountType.Worker, "Wendy", "Ward",
+                "wendy@example.com", "wendy@example.com", "secret1", "secret1");
+
+        assertEquals(Worker.class, account.getClass());
+        assertEquals(AccountType.Worker, account.getType());
+        assertSame(account, Account.find("worker1").orElseThrow());
+        assertTrue(Authenticator.validatePassword("worker1", "secret1"));
+    }
+
+    @Test
+    void registerWithInvalidFormStoresNothing() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> Authenticator.register("worker1", AccountType.Worker, "Wendy", "Ward",
+                        "wendy@example.com", "wendy@example.com", "short", "short"));
+
+        assertEquals(Validation.MSG_INVALID_PASSWORD, e.getMessage());
+        assertTrue(Account.accountList.isEmpty());
+        assertTrue(Authenticator.ACCOUNTS.isEmpty());
+    }
+
+    @Test
+    void registerWithTakenIdIsRejected() {
+        Authenticator.register("alice", AccountType.User, "Alice", "Smith",
+                "alice@example.com", "alice@example.com", "secret1", "secret1");
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> Authenticator.register("alice", AccountType.Manager, "Mallory", "Jones",
+                        "m@example.com", "m@example.com", "other12", "other12"));
+
+        assertEquals(Validation.MSG_ID_TAKEN, e.getMessage());
+        assertEquals(AccountType.User, Account.find("alice").orElseThrow().getType());
+        assertTrue(Authenticator.validatePassword("alice", "secret1"));
     }
 }

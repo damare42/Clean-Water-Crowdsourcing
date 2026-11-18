@@ -2,16 +2,14 @@ package model;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Characterisation tests for the current behaviour of {@link Account}.
- */
 class AccountTest {
 
     @BeforeEach
@@ -20,8 +18,13 @@ class AccountTest {
         Account.accountList.clear();
     }
 
+    private static Account alice() {
+        return new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User,
+                "404-555-0000", "North Ave");
+    }
+
     @Test
-    void fiveArgConstructorSetsFields() {
+    void fiveArgConstructorSetsFieldsWithEmptyPhoneAndAddress() {
         Account account = new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.Worker);
 
         assertEquals("alice", account.getId());
@@ -34,7 +37,7 @@ class AccountTest {
     }
 
     @Test
-    void sevenArgConstructorSetsCoreFields() {
+    void sevenArgConstructorKeepsPhoneAndAddress() {
         Account account = new Account("bob", "Bob", "Jones", "bob@example.com", AccountType.Manager,
                 "555-1234", "1 Main St");
 
@@ -43,22 +46,13 @@ class AccountTest {
         assertEquals("Jones", account.getLname());
         assertEquals("bob@example.com", account.getEmail());
         assertEquals(AccountType.Manager, account.getType());
-    }
-
-    @Test
-    void sevenArgConstructorPhoneAndAddressAreNotVisibleThroughGetters() {
-        // Current behaviour: the constructor stores phone/address in JavaFX properties,
-        // but getPhone()/getAddress() read separate plain fields that default to "".
-        Account account = new Account("bob", "Bob", "Jones", "bob@example.com", AccountType.Manager,
-                "555-1234", "1 Main St");
-
-        assertEquals("", account.getPhone());
-        assertEquals("", account.getAddress());
+        assertEquals("555-1234", account.getPhone());
+        assertEquals("1 Main St", account.getAddress());
     }
 
     @Test
     void constructorDoesNotRegisterAccount() {
-        new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User);
+        alice();
 
         assertTrue(Account.accountList.isEmpty());
     }
@@ -86,7 +80,7 @@ class AccountTest {
 
     @Test
     void accountTypePropertyReflectsType() {
-        Account account = new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User);
+        Account account = alice();
 
         assertEquals(AccountType.User, account.getAccountTypeProperty().get());
         account.setType(AccountType.Worker);
@@ -95,7 +89,7 @@ class AccountTest {
 
     @Test
     void toStringReturnsId() {
-        Account account = new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User);
+        Account account = alice();
 
         assertEquals("alice", account.toString());
         account.setId("other");
@@ -103,59 +97,100 @@ class AccountTest {
     }
 
     @Test
-    void getAccountListReturnsSharedStaticMap() {
-        Account account = new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User);
-
-        assertSame(Account.accountList, account.getAccountList());
-    }
-
-    @Test
-    void ofReturnsRegisteredAccount() {
-        Account alice = new Account("alice", "Alice", "Smith", "alice@example.com", AccountType.User);
+    void findReturnsRegisteredAccount() {
+        Account alice = alice();
         Authenticator.addAccount(alice, "secret");
 
-        assertSame(alice, Account.of("alice"));
+        assertSame(alice, Account.find("alice").orElseThrow());
         assertEquals(1, Account.accountList.size());
     }
 
     @Test
-    void ofCreatesAndRegistersPlaceholderForUnknownId() {
-        // Current behaviour: an unknown id yields a new, mostly empty account that is
-        // added to the account list (a "phantom" account).
-        Account phantom = Account.of("ghost");
+    void findDoesNotCreateAccountForUnknownId() {
+        assertTrue(Account.find("ghost").isEmpty());
+        assertTrue(Account.find(null).isEmpty());
 
-        assertEquals("ghost", phantom.getId());
-        assertNull(phantom.getFname());
-        assertNull(phantom.getLname());
-        assertNull(phantom.getEmail());
-        assertNull(phantom.getType());
-        assertEquals("", phantom.getPhone());
-        assertEquals("", phantom.getAddress());
-        assertSame(phantom, Account.accountList.get("ghost"));
+        assertTrue(Account.accountList.isEmpty());
         assertTrue(Authenticator.ACCOUNTS.isEmpty());
+        assertTrue(Authenticator.isIdAvailable("ghost"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(AccountType.class)
+    void createReturnsSubclassMatchingType(AccountType type) {
+        Account account = Account.create(type, "id", "First", "Last", "f@example.com");
+
+        Class<?> expected = switch (type) {
+            case User -> User.class;
+            case Worker -> Worker.class;
+            case Manager -> Manager.class;
+            case Admin -> Admin.class;
+        };
+        assertEquals(expected, account.getClass());
+        assertEquals(type, account.getType());
+        assertEquals("id", account.getId());
+        assertEquals("First", account.getFname());
+        assertEquals("Last", account.getLname());
+        assertEquals("f@example.com", account.getEmail());
+        assertTrue(Account.accountList.isEmpty());
     }
 
     @Test
-    void ofReturnsSameInstanceOnRepeatedCalls() {
-        Account first = Account.of("ghost");
-        Account second = Account.of("ghost");
-
-        assertSame(first, second);
-        assertNotSame(first, Account.of("other"));
-        assertEquals(2, Account.accountList.size());
+    void createRejectsMissingType() {
+        assertThrows(IllegalArgumentException.class,
+                () -> Account.create(null, "id", "First", "Last", "f@example.com"));
     }
 
     @Test
-    void subclassesAreAccountsWithGivenType() {
-        Account worker = new Worker("w", "W", "K", "w@example.com", AccountType.Worker);
-        Account manager = new Manager("m", "M", "G", "m@example.com", AccountType.Manager);
-        Account admin = new Admin("a", "A", "D", "a@example.com", AccountType.Admin);
+    void subclassConstructorsSetTheirOwnType() {
+        assertEquals(AccountType.User, new User("u", "U", "S", "u@example.com").getType());
+        assertEquals(AccountType.Worker, new Worker("w", "W", "K", "w@example.com").getType());
+        assertEquals(AccountType.Manager, new Manager("m", "M", "G", "m@example.com").getType());
+        assertEquals(AccountType.Admin, new Admin("a", "A", "D", "a@example.com").getType());
+        assertTrue(new Manager("m", "M", "G", "m@example.com") instanceof Worker);
+        assertTrue(new Admin("a", "A", "D", "a@example.com") instanceof User);
+    }
 
-        assertTrue(worker instanceof User);
-        assertTrue(manager instanceof Worker);
-        assertTrue(admin instanceof User);
-        assertEquals(AccountType.Worker, worker.getType());
-        assertEquals(AccountType.Manager, manager.getType());
-        assertEquals(AccountType.Admin, admin.getType());
+    @Test
+    void updateProfileAppliesAllFieldsWhenValid() {
+        Account account = alice();
+
+        account.updateProfile("Alicia", "Smythe", "alicia@example.com", "555-0101", "Tech Square");
+
+        assertEquals("Alicia", account.getFname());
+        assertEquals("Smythe", account.getLname());
+        assertEquals("alicia@example.com", account.getEmail());
+        assertEquals("555-0101", account.getPhone());
+        assertEquals("Tech Square", account.getAddress());
+    }
+
+    @Test
+    void updateProfileWithInvalidEmailChangesNothing() {
+        Account account = alice();
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> account.updateProfile("Alicia", "Smythe", "not-an-email", "555-0101", "Tech Square"));
+
+        assertEquals(Validation.MSG_INVALID_EMAIL, e.getMessage());
+        assertUnchanged(account);
+    }
+
+    @Test
+    void updateProfileWithInvalidNameChangesNothing() {
+        Account account = alice();
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> account.updateProfile("Al1cia", "Smythe", "alicia@example.com", "555-0101", "Tech Square"));
+
+        assertEquals(Validation.MSG_INVALID_NAME, e.getMessage());
+        assertUnchanged(account);
+    }
+
+    private static void assertUnchanged(Account account) {
+        assertEquals("Alice", account.getFname());
+        assertEquals("Smith", account.getLname());
+        assertEquals("alice@example.com", account.getEmail());
+        assertEquals("404-555-0000", account.getPhone());
+        assertEquals("North Ave", account.getAddress());
     }
 }

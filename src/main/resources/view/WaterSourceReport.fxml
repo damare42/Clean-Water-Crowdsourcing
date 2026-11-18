@@ -58,6 +58,7 @@
                   </Button>
                </children>
             </HBox>
+            <Label fx:id="errorMessage" textFill="#d32020" visible="false" wrapText="true" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="7" />
             <HBox prefHeight="100.0" prefWidth="415.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
             <HBox prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="2" GridPane.rowIndex="1">
                <children>

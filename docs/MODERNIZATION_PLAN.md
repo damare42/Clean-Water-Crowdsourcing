@@ -49,6 +49,6 @@ REST server + web/mobile client so reports are actually shared between users.
 
 ## Status
 - [x] Phase 0
-- [ ] Phase 1
+- [x] Phase 1
 - [ ] Phase 2
 - [ ] Phase 3
