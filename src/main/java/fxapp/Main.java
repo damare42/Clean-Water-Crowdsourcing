@@ -21,6 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.stage.Modality;
 import java.io.IOException;
+import java.net.URL;
 
 /**
  * the main method of the application that deals with the creation of windows
@@ -60,7 +61,7 @@ public class Main extends Application {
      */
     private void gotoWelcome() {
         try {
-            WelcomeController welcome = (WelcomeController) replaceSceneContent("../view/WelcomePage.fxml");
+            WelcomeController welcome = (WelcomeController) replaceSceneContent("/view/WelcomePage.fxml");
             welcome.setApp(this);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -72,7 +73,7 @@ public class Main extends Application {
      */
     public void gotoRegistration() {
         try {
-            RegistrationController registration = (RegistrationController) replaceSceneContent("../view/RegisterPage.fxml");
+            RegistrationController registration = (RegistrationController) replaceSceneContent("/view/RegisterPage.fxml");
             registration.setApp(this);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -84,7 +85,7 @@ public class Main extends Application {
      */
     public void gotoProfile() {
         try {
-            ProfileController profile = (ProfileController) replaceSceneContent("../view/ProfilePage.fxml");
+            ProfileController profile = (ProfileController) replaceSceneContent("/view/ProfilePage.fxml");
             profile.setApp(this);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -96,7 +97,7 @@ public class Main extends Application {
      */
     public void gotoApp() {
         try {
-            AppViewController appView = (AppViewController) replaceSceneContent("../view/appview.fxml");
+            AppViewController appView = (AppViewController) replaceSceneContent("/view/appview.fxml");
             appView.setApp(this);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -108,7 +109,7 @@ public class Main extends Application {
      */
     public void gotoWaterSourceReport() {
         try {
-            WaterSourceReportController waterSourceReportController = (WaterSourceReportController) replaceSceneContent("../view/WaterSourceReport.fxml");
+            WaterSourceReportController waterSourceReportController = (WaterSourceReportController) replaceSceneContent("/view/WaterSourceReport.fxml");
             waterSourceReportController.setApp(this);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -120,7 +121,7 @@ public class Main extends Application {
      */
     public void gotoWSRViewer() {
         try {
-            WSRViewerController WSRViewers = (WSRViewerController) replaceSceneContent("../view/WSRViewer.fxml");
+            WSRViewerController WSRViewers = (WSRViewerController) replaceSceneContent("/view/WSRViewer.fxml");
             WSRViewers.setApp(this);
         } catch (Exception ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -168,16 +169,14 @@ public class Main extends Application {
      */
     private Initializable replaceSceneContent(String fxml) throws Exception {
         FXMLLoader loader = new FXMLLoader();
-        InputStream in = Main.class.getResourceAsStream(fxml);
         loader.setBuilderFactory(new JavaFXBuilderFactory());
         loader.setLocation(Main.class.getResource(fxml));
         AnchorPane page;
-        try {
-            //redundant error?
+        try (InputStream in = Main.class.getResourceAsStream(fxml)) {
+            if (in == null) {
+                throw new IOException("FXML resource not found on classpath: " + fxml);
+            }
             page = (AnchorPane) loader.load(in);
-
-        } finally {
-            in.close();
         }
         Scene scene = new Scene(page, MINIMUM_WINDOW_WIDTH, MINIMUM_WINDOW_HEIGHT);
         stage.setScene(scene);
@@ -193,7 +192,11 @@ public class Main extends Application {
         try {
             // Load the fxml file and create a new stage for the popup dialog.
             FXMLLoader loader = new FXMLLoader();
-            loader.setLocation(Main.class.getResource("../view/LoginPage.fxml"));
+            URL location = Main.class.getResource("/view/LoginPage.fxml");
+            if (location == null) {
+                throw new IOException("FXML resource not found on classpath: /view/LoginPage.fxml");
+            }
+            loader.setLocation(location);
             AnchorPane page = loader.load();
 
             // Create the dialog Stage.
