@@ -72,8 +72,10 @@ the top of `src/main/resources/web/map.js`).
 
 ## Prerequisites
 
-- JDK 17 or newer
-- Maven 3.6.3 or newer (checked by the build via maven-enforcer-plugin)
+- JDK 17 or newer (JDK 21 LTS recommended)
+- Maven is optional: the bundled Maven Wrapper (`./mvnw`, or `mvnw.cmd` on Windows)
+  downloads Maven 3.9.11 on first use. An installed Maven 3.6.3 or newer also works;
+  replace `./mvnw` with `mvn` in the commands below.
 
 The OpenJFX libraries are downloaded by Maven for your platform; no separate JavaFX
 install is needed.
@@ -82,10 +84,10 @@ install is needed.
 
 ```sh
 # Run the application
-mvn javafx:run
+./mvnw javafx:run
 
 # Compile and run all tests
-mvn verify
+./mvnw verify
 ```
 
 Tests cover the model, persistence and service layers and do not need a display.
