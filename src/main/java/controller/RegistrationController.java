@@ -1,13 +1,11 @@
 package controller;
+
 import fxapp.Main;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-
-import java.net.URL;
-import java.util.ResourceBundle;
-
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -15,16 +13,25 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
-import model.AccountType;
-import model.Authenticator;
 import model.Account;
+import model.AccountType;
+import model.service.AuthService;
+
+import java.net.URL;
+import java.util.Arrays;
+import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by Sheng on 9/19/16.
- * Controls the registration display functionality
+ * Controls the registration page.
  */
-public class RegistrationController extends AnchorPane implements Initializable {
-    private Account account;
+public class RegistrationController extends AnchorPane implements Initializable, Page {
+    private static final Logger LOGGER = Logger.getLogger(RegistrationController.class.getName());
+    static final String MSG_AUTO_LOGIN_FAILED =
+            "Your account was created, but you could not be logged in. Please log in.";
+
     private Main application;
     @FXML
     private TextField id;
@@ -44,122 +51,117 @@ public class RegistrationController extends AnchorPane implements Initializable 
     private Label errorMessage;
     @FXML
     private ComboBox<AccountType> accountTypeBox;
+    @FXML
+    private Button registerButton;
+    @FXML
+    private Button backButton;
 
-    private final ObservableList<AccountType> accountTypeList = FXCollections.observableArrayList(AccountType.User, AccountType.Worker, AccountType.Manager);
+    private final ObservableList<AccountType> accountTypeList =
+            FXCollections.observableArrayList(AccountType.selfRegistrable());
 
     /**
      * Setup the main application link so we can call methods there
      * @param application the reference to the FX Application instance
      */
+    @Override
     public void setApp(Main application) {
         this.application = application;
-
     }
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         accountTypeBox.setItems(accountTypeList);
     }
 
     /**
-     * Validates the id and returns true if it is valid
-     * @return true if the id valid
-     */
-    @FXML
-    private boolean validateID() {
-        return Authenticator.validateID(id.getText());
-    }
-
-    /**
-     * Validates the requirements to register for the user
-     * @return true or false if the password and the username meets all the
-     * requirements
-     */
-    private boolean validator() {
-        String emailRegex = "^[_A-Za-z0-9-]+(\\.[_A-Za-z0-9-]+)" +
-                "*@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$";
-        if (id.getText() == null || id.getText().length() < 2) {
-            errorMessage.setText("Username has to be at least 2 characters");
-        } else if (accountTypeBox.getValue() == null) {
-            errorMessage.setText("Please select an account type");
-        } else if (!firstname.getText().matches("[a-zA-Z]+")
-                || !lastname.getText().matches("[a-zA-Z]+")
-                || firstname.getText().length() < 1
-                || lastname.getText().length() < 1) {
-            errorMessage.setText("Name fields are required and is restricted to letters only");
-        } else if (!email.getText().matches(emailRegex)) {
-            errorMessage.setText("Invalid email address");
-        } else if (!email.getText().matches(emailRegex)) {
-            errorMessage.setText("Invalid email address");
-        } else if (!email.getText().equals(emailConfirm.getText())) {
-            errorMessage.setText("Email confirmation does not match your email address");
-        } else if (password.getText().length() < 6
-                || !password.getText().matches("[a-zA-Z0-9]*")) {
-            errorMessage.setText("Password must be more than 6 alphanumeric characters");
-        } else if (!password.getText().equals(passwordConfirm.getText())) {
-            errorMessage.setText("Password confirmation does not match your password");
-        } else {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Becomes active when the registration is presses and it creates a new
-     * account
+     * Registers a new account, or shows the first validation error. The password is
+     * hashed on a background thread; the buttons are disabled meanwhile.
      */
     @FXML
     private void registerPressed() {
-        if (validator()) {
-            account = new Account(id.getText(), firstname.getText(), lastname.getText(), email.getText(), accountTypeBox.getValue());
-//            account.setId(id.getText());
-//            account.setFname(firstname.getText());
-//            account.setLname(lastname.getText());
-//            account.setEmail(email.getText());
-//            account.setType(accountTypeBox.getValue());
-//            System.out.println("account list: " + account.getAccountList().values());
-            Authenticator.addAccount(account, password.getText());
-            application.registrationLogging(account.toString());
+        if (registerButton.isDisabled()) {
+            return;
+        }
+        String userId = id.getText();
+        AccountType type = accountTypeBox.getValue();
+        String first = firstname.getText();
+        String last = lastname.getText();
+        String mail = email.getText();
+        String mailConfirm = emailConfirm.getText();
+        char[] secret = password.getText().toCharArray();
+        char[] secretConfirm = passwordConfirm.getText().toCharArray();
+        AuthService auth = application.getContext().getAuthService();
+        setBusy(true);
+        application.runInBackground(() -> {
+            try {
+                return auth.register(userId, type, first, last, mail, mailConfirm, secret, secretConfirm);
+            } finally {
+                Arrays.fill(secret, '\0');
+                Arrays.fill(secretConfirm, '\0');
+            }
+        }, this::registered, this::registrationFailed);
+    }
 
-        } else {
-            errorMessage.setVisible(true);
-            System.out.println("visible");
+    private void registered(Account account) {
+        setBusy(false);
+        if (!application.registrationLogging(account.getId())) {
+            showError(MSG_AUTO_LOGIN_FAILED);
         }
     }
+
+    private void registrationFailed(Throwable error) {
+        setBusy(false);
+        if (error instanceof IllegalArgumentException) {
+            showError(error.getMessage());
+            return;
+        }
+        LOGGER.log(Level.SEVERE, "Registration failed because of an error", error);
+        showError("Could not save the account: " + error.getMessage());
+    }
+
+    private void setBusy(boolean busy) {
+        registerButton.setDisable(busy);
+        backButton.setDisable(busy);
+    }
+
+    private void showError(String text) {
+        errorMessage.setText(text);
+        errorMessage.setVisible(true);
+    }
+
     /**
-     * It becomes active when the register key is pressed
-     * @param event the event of the key pressed
+     * Registers when ENTER is pressed
+     * @param event the key event
      */
     @FXML
     private void registerEntered(KeyEvent event) {
         if (event.getCode() == KeyCode.ENTER) {
+            // Consume so the page-wide handler does not register a second time.
+            event.consume();
             registerPressed();
         }
     }
 
     /**
-     * Goes to the previous page when the button clicked
+     * Goes back to the welcome page
      */
     @FXML
     private void backPressed() {
-        application.accountLogout();
-    }
-    /**
-     * Goes to previous page when the key is entered
-     * @param event the key entered
-     */
-    @FXML
-    private void backKeyPressed(KeyEvent event) {
-        if (event.getCode() == KeyCode.ENTER) {
-            backPressed();
+        if (!backButton.isDisabled()) {
+            application.accountLogout();
         }
     }
 
     /**
-     * Closes when the registration display is closed
+     * Goes back to the welcome page when ENTER is pressed
+     * @param event the key event
      */
     @FXML
-    private void handleCloseMenu() {
-        System.exit(0);
+    private void backKeyPressed(KeyEvent event) {
+        if (event.getCode() == KeyCode.ENTER) {
+            // Consume so the page-wide ENTER handler does not register.
+            event.consume();
+            backPressed();
+        }
     }
-
 }

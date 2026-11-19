@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.WSRViewerController">
+   <children>
+      <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+         <top>
+            <VBox alignment="CENTER" spacing="4.0" BorderPane.alignment="CENTER">
+               <children>
+                  <Label text="Water Source Reports List" />
+                  <Label fx:id="message" managed="false" textFill="#d32020" visible="false" wrapText="true" />
+               </children>
+               <padding>
+                  <Insets bottom="6.0" top="10.0" />
+               </padding>
+            </VBox>
+         </top>
+         <center>
+            <TableView fx:id="reportTable" onKeyPressed="#tableKeyPressed" BorderPane.alignment="CENTER">
+               <placeholder>
+                  <Label text="No reports yet" />
+               </placeholder>
+               <columns>
+                  <TableColumn fx:id="numberColumn" prefWidth="70.0" text="Number" />
+                  <TableColumn fx:id="dateColumn" prefWidth="95.0" text="Date" />
+                  <TableColumn fx:id="timeColumn" prefWidth="60.0" text="Time" />
+                  <TableColumn fx:id="reporterColumn" prefWidth="120.0" text="Reporter" />
+                  <TableColumn fx:id="typeColumn" prefWidth="80.0" text="Type" />
+                  <TableColumn fx:id="conditionColumn" prefWidth="85.0" text="Condition" />
+                  <TableColumn fx:id="latitudeColumn" prefWidth="110.0" text="Latitude" />
+                  <TableColumn fx:id="longitudeColumn" prefWidth="110.0" text="Longitude" />
+               </columns>
+            </TableView>
+         </center>
+         <bottom>
+            <HBox alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
+               <children>
+                  <Button fx:id="detailsButton" mnemonicParsing="false" onAction="#detailsPressed" text="Details" />
+                  <Button fx:id="goBack" mnemonicParsing="false" onAction="#goBackButtonPressed" text="Back" />
+               </children>
+               <padding>
+                  <Insets bottom="10.0" top="10.0" />
+               </padding>
+            </HBox>
+         </bottom>
+      </BorderPane>
+   </children>
+</AnchorPane>

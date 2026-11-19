@@ -1,232 +1,157 @@
 package model;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Created by Sheng on 9/27/16.
- * Represents a single account in the system
- *
- * Information Holder
- *
+ * Represents a single account in the system.
+ * <p>
+ * The role of an account is defined only by its subclass ({@link User},
+ * {@link Worker}, {@link Manager} or {@link Admin}); {@link #getType()} is derived
+ * from it and cannot be changed. Accounts are created with {@link #create}; the id
+ * is fixed once created. Accounts are not stored anywhere by themselves; see
+ * {@code model.service.AuthService} for registration and persistence.
  */
-public class Account {
+public abstract class Account {
 
-    private String id; //the id of the user
-    private String fname; //the first name of the user
-    private String lname; //the last name of the user
-    private String email = ""; //the e-mail address of the user
-    private String address = ""; //the address of the user
-    private String phone = ""; //the phone number of the user
-    private final StringProperty _id = new SimpleStringProperty();
-    private final StringProperty _fname = new SimpleStringProperty();
-    private final StringProperty _lname = new SimpleStringProperty();
-    private final StringProperty _email = new SimpleStringProperty();
-    private final StringProperty _phone = new SimpleStringProperty();
-    private final StringProperty _address = new SimpleStringProperty();
-    private final ObjectProperty<AccountType> _type = new SimpleObjectProperty<>();
-
+    private final String id;
+    private final StringProperty fname = new SimpleStringProperty();
+    private final StringProperty lname = new SimpleStringProperty();
+    private final StringProperty email = new SimpleStringProperty();
+    private final StringProperty phone = new SimpleStringProperty();
+    private final StringProperty address = new SimpleStringProperty();
 
     /**
-     * a method to get the ID of the user
-     * @return the ID of the user
+     * Only the subclasses in this package can create accounts; everyone else uses
+     * {@link #create}.
      */
-    public String getId() {return _id.get();}
-
-    /**
-     * a method to set the user ID
-     * @param id the String to be set as the ID
-     */
-    public void setId(String id) { _id.set(id); }
-
-    /**
-     * a method to get the first name of the user
-     * @return the first name of the user
-     */
-    public String getFname() {return _fname.get();}
-
-    /**
-     * a method to set the first name of the user
-     * @param fname the first name of the user
-     */
-    public void setFname(String fname) { _fname.set(fname); }
-
-    /**
-     * a method to get the last name of the User
-     * @return the last name of the user
-     */
-    public String getLname() {return _lname.get(); }
-
-    /**
-     * a method to set the last name of the User
-     * @param lname the last name of the user
-     */
-    public void setLname(String lname) { _lname.set(lname); }
-
-    /**
-     * a method to get the e-mail address of the user
-     * @return the user's e-mail address
-     */
-    public String getEmail() {return _email.get();}
-
-    /**
-     * a method to set the e-mail address of the User
-     * @param email the e-mail to be set
-     */
-    public void setEmail(String email) { _email.set(email); }
-
-
-    /**
-     * a method to get the type of the User
-     * types include: User, Worker, Manager, Admin
-     * @return the type of User
-     */
-    public AccountType getType() {return _type.get();}
-
-    /**
-     * a method to set the user account type
-     * @param type the Enum of the account type
-     */
-    public void setType(AccountType type) { _type.set(type); }
-
-    /**
-     * a method to we haven't used yet
-     * @return the type from the combo box in M3
-     */
-    public ObjectProperty getAccountTypeProperty() { return _type; }
-
-
-    /**
-     * A map to hold all of the accounts
-     */
-    public static final Map<String, Account> accountList = new HashMap<String, Account>();
-    /**
-     * A  the default constructor of the user
-     */
-    public Account(String id, String fname, String lname, String email, AccountType type) {
-//        this.id = id;
-//        this.fname = fname;
-//        this.lname = lname;
-//        this.email = email;
-//        this.type = type;
-     this(id, fname, lname, email, type, "", "");
-
-    }
-    /**
-     * the constructor of user if the user included their phone number
-     * and address
-     */
-    public Account(String id, String fname, String lname, String email, AccountType type, String phone, String address) {
-//        this.id = id;
-//        this.fname = fname;
-//        this.lname = lname;
-//        this.email = email;
-//        this.type = type;
-        _id.set(id);
-        _fname.set(fname);
-        _lname.set(lname);
-        _email.set(email);
-        _type.set(type);
-        _phone.set(phone);
-        _address.set(address);
-
-
-
-    }
-
-    /**
-     * a method to create the account of the user
-     * @param id the ID of the user
-     * @return the newly created account
-     */
-    public static Account of(String id) {
-        Account account = accountList.get(id);
-        if (account == null) {
-            account = new Account(id);
-            accountList.put(id, account);
+    Account(String id, String fname, String lname, String email, String phone, String address) {
+        if (!Validation.isValidId(id)) {
+            throw new IllegalArgumentException(Validation.MSG_INVALID_ID);
         }
+        this.id = Validation.normalizeId(id);
+        this.fname.set(fname);
+        this.lname.set(lname);
+        this.email.set(email);
+        this.phone.set(phone == null ? "" : phone);
+        this.address.set(address == null ? "" : address);
+    }
 
-        for (String key : Authenticator.ACCOUNTS.keySet()) {
-            System.out.println(key + " = " + Authenticator.ACCOUNTS.get(key));
+    /**
+     * Creates an account with an empty phone number and address.
+     *
+     * @see #create(AccountType, String, String, String, String, String, String)
+     */
+    public static Account create(AccountType type, String id, String fname, String lname,
+                                 String email) {
+        return create(type, id, fname, lname, email, "", "");
+    }
+
+    /**
+     * Creates an account of the subclass that matches the given account type.
+     *
+     * @param type the account type; selects User, Worker, Manager or Admin
+     * @param id the account id; surrounding whitespace is removed
+     * @return a new, unregistered account
+     * @throws IllegalArgumentException if the type is null or the id is invalid
+     */
+    public static Account create(AccountType type, String id, String fname, String lname,
+                                 String email, String phone, String address) {
+        if (type == null) {
+            throw new IllegalArgumentException(Validation.MSG_ACCOUNT_TYPE_REQUIRED);
         }
-        return account;
+        return switch (type) {
+            case User -> new User(id, fname, lname, email, phone, address);
+            case Worker -> new Worker(id, fname, lname, email, phone, address);
+            case Manager -> new Manager(id, fname, lname, email, phone, address);
+            case Admin -> new Admin(id, fname, lname, email, phone, address);
+        };
     }
 
     /**
-     * a method to set the ID of the account
-     * @param id the new ID of the user
+     * Updates the editable profile fields of this object. All fields are validated
+     * first; if any is invalid nothing is changed. This does not persist anything;
+     * use {@code AccountService#updateProfile} for that.
+     *
+     * @throws IllegalArgumentException with a user-facing message if validation fails
      */
-    private Account(String id) {
-        _id.set(id);
+    public void updateProfile(String fname, String lname, String email, String phone,
+                              String address) {
+        Optional<String> error = Validation.validateProfile(fname, lname, email);
+        if (error.isPresent()) {
+            throw new IllegalArgumentException(error.get());
+        }
+        this.fname.set(fname);
+        this.lname.set(lname);
+        this.email.set(email);
+        this.phone.set(phone == null ? "" : phone);
+        this.address.set(address == null ? "" : address);
     }
 
     /**
-     * a method to get the map that holds the users
-     * @return the map of the users
+     * @return the account id as entered at registration, without surrounding
+     *         whitespace. Ids are unique ignoring case.
      */
-    public Map<String, Account> getAccountList() {
-        return accountList;
+    public String getId() {
+        return id;
     }
 
     /**
-     * a method to easily toString the account
-     * @return the String created from the account
+     * @return the key used to look the account up: the id in lower case
      */
-    public String toString() {
-        return _id.get();
+    public String getIdKey() {
+        return Validation.idKey(id);
     }
-    /**
-     * @return the email
-     */
-//    public String getEmail() {
-//        return email;
-//    }
 
-    /**
-     * @param email the email to set
-     */
-//    public void setEmail(String email) {
-//        this.email = email;
-//    }
+    public String getFname() {
+        return fname.get();
+    }
 
-    /**
-     * @return the phone
-     */
+    public String getLname() {
+        return lname.get();
+    }
+
+    public String getEmail() {
+        return email.get();
+    }
+
     public String getPhone() {
-        return phone;
+        return phone.get();
     }
 
-    /**
-     * @param phone the phone to set
-     */
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-
-
-    /**
-     * @return the address
-     */
     public String getAddress() {
-        return address;
+        return address.get();
     }
 
     /**
-     * @param address the address to set
+     * @return the account type, determined by the subclass: User, Worker, Manager or Admin
      */
-    public void setAddress(String address) {
-        this.address = address;
+    public abstract AccountType getType();
+
+    /**
+     * @return the permissions of this account's type
+     */
+    public Set<Permission> getPermissions() {
+        return getType().permissions();
     }
 
     /**
-     * @return the account type
+     * @param permission the permission to check
+     * @return true if this account's type grants the permission
      */
-//    public AccountType getAccountType() { return getType(); }
+    public boolean hasPermission(Permission permission) {
+        return getType().hasPermission(permission);
+    }
 
+    /**
+     * @return the account id
+     */
+    @Override
+    public String toString() {
+        return id;
+    }
 }

@@ -1,6 +1,7 @@
 package controller;
 
 import fxapp.Main;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.input.KeyCode;
@@ -14,7 +15,7 @@ import java.util.ResourceBundle;
  * Created by Sheng on 9/19/16.
  * A controller for the the welcome page
  */
-public class WelcomeController extends AnchorPane implements Initializable {
+public class WelcomeController extends AnchorPane implements Initializable, Page {
 
     private Main application;
 
@@ -22,6 +23,7 @@ public class WelcomeController extends AnchorPane implements Initializable {
      * sets the welcome page
      * @param application the main application of welcome page
      */
+    @Override
     public void setApp(Main application){ this.application = application;
     }
 
@@ -39,7 +41,7 @@ public class WelcomeController extends AnchorPane implements Initializable {
      */
     @FXML
     private void loginPressed() {
-        boolean okClicked = application.showLoginDialog();
+        application.showLoginDialog();
     }
 
     /**
@@ -55,7 +57,7 @@ public class WelcomeController extends AnchorPane implements Initializable {
      */
     @FXML
     private void handleCloseMenu() {
-        System.exit(0);
+        Platform.exit();
     }
 
     /**

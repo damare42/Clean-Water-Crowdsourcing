@@ -1,12 +1,17 @@
 package model;
+
 /**
  * Created by Sheng on 9/27/16.
- * Worker to implement the required functionality
+ * A worker account; can also file water purity reports.
  */
 public class Worker extends User {
-    // this it not correct, just place holder
-    public Worker(String id, String fname, String lname, String email, AccountType type) {
-        super(id, fname, lname, email, type);
+
+    Worker(String id, String fname, String lname, String email, String phone, String address) {
+        super(id, fname, lname, email, phone, address);
     }
 
+    @Override
+    public AccountType getType() {
+        return AccountType.Worker;
+    }
 }

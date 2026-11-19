@@ -1,0 +1,65 @@
+html, body, #map {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#map.cwc-picking {
+    cursor: crosshair;
+}
+
+.cwc-popup h3 {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+}
+
+.cwc-popup table {
+    border-collapse: collapse;
+    margin-bottom: 6px;
+}
+
+.cwc-popup th {
+    text-align: left;
+    padding-right: 8px;
+    font-weight: normal;
+    color: #555;
+}
+
+.cwc-popup td {
+    font-weight: bold;
+}
+
+.cwc-purity-icon {
+    background: #1565c0;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+    box-sizing: border-box;
+}
+
+.cwc-legend {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font: 12px sans-serif;
+    line-height: 18px;
+}
+
+.cwc-legend span {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    vertical-align: middle;
+}
+
+.cwc-legend-source {
+    background: #2a81cb;
+    border-radius: 50% 50% 50% 0;
+}
+
+.cwc-legend-purity {
+    background: #1565c0;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}

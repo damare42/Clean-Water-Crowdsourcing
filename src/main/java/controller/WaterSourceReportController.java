@@ -1,30 +1,35 @@
 package controller;
 
+import fxapp.Main;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import fxapp.Main;
-import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.ResourceBundle;
-
-import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.AnchorPane;
-import model.*;
+import model.GeoPoint;
+import model.Validation;
+import model.WaterSourceCondition;
+import model.WaterSourceReport;
+import model.WaterSourceType;
+import model.persistence.DataAccessException;
+import model.service.PermissionDeniedException;
+
+import java.net.URL;
+import java.time.ZonedDateTime;
+import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Created by Sean on 10/6/2016.
- * A Controller class to handle the Water Source Report
+ * A Controller class to handle the Water Source Report form
  */
-public class WaterSourceReportController extends AnchorPane implements Initializable {
+public class WaterSourceReportController extends AnchorPane implements Initializable, Page {
+    private static final Logger LOGGER = Logger.getLogger(WaterSourceReportController.class.getName());
+
     private Main application;
-    private WaterSourceReport report;
     @FXML
     private Label username;
     @FXML
@@ -38,41 +43,40 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
     @FXML
     private ComboBox<WaterSourceCondition> condition;
     @FXML
-    private Button back;
-    @FXML
-    private Button submitReport;
-    @FXML
     private TextField latitude;
     @FXML
     private TextField longitude;
-
-
-    private final ObservableList<WaterSourceCondition> waterSourceConditions = FXCollections.observableArrayList(WaterSourceCondition.values());
-    private final ObservableList<WaterSourceType> waterSourceTypes = FXCollections.observableArrayList(WaterSourceType.values());
+    @FXML
+    private Label errorMessage;
 
     /**
      * Setup the main application link so we can call methods there
      * @param application the reference to the FX Application instance
      */
+    @Override
     public void setApp(Main application) {
         this.application = application;
-        Account loggedAccount = application.getLoggedAccount();
-        SimpleDateFormat dateformatter = new SimpleDateFormat("yyyy/MM/dd");
-        SimpleDateFormat timeFormatter = new SimpleDateFormat("H:mm");
-        Date theDate = new Date();
-        date.setText(dateformatter.format(theDate));
-        time.setText(timeFormatter.format(theDate));
-        username.setText(loggedAccount.getId());
-        latitude.setText("1");
-        longitude.setText("2");
-
-
+        username.setText(application.getLoggedAccount().getId());
+        try {
+            number.setText(String.valueOf(application.getContext().getReportService()
+                    .nextReportNumber(application.getLoggedAccount())));
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Could not read the next report number", e);
+            number.setText("?");
+        } catch (PermissionDeniedException e) {
+            LOGGER.log(Level.WARNING, "Not allowed to see the next report number: {0}", e.getMessage());
+            number.setText("?");
+        }
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        type.setItems(waterSourceTypes);
-        condition.setItems(waterSourceConditions);
+        type.setItems(FXCollections.observableArrayList(WaterSourceType.values()));
+        condition.setItems(FXCollections.observableArrayList(WaterSourceCondition.values()));
+        ZonedDateTime now = ZonedDateTime.now();
+        date.setText(WaterSourceReport.DATE_FORMAT.format(now));
+        time.setText(WaterSourceReport.TIME_FORMAT.format(now));
+        errorMessage.setText("");
     }
 
     /**
@@ -84,14 +88,39 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
     }
 
     /**
-     * submits the report to the server
+     * Validates and stores the report, or shows the first validation error.
      */
     @FXML
-    private void submitReport () {
-        report = new WaterSourceReport(username.getText(), date.getText(),
-                time.getText(), longitude.getText(), latitude.getText(),
-                type.getValue(), condition.getValue());
-        WaterSourceReportHolder.addReport(report.getReportNumber(), report);
-        application.gotoApp();
+    private void submitReport() {
+        try {
+            double lat = Validation.parseLatitude(latitude.getText());
+            double lng = Validation.parseLongitude(longitude.getText());
+            application.getContext().getReportService().submit(application.getLoggedAccount(),
+                    lat, lng, type.getValue(), condition.getValue());
+            application.gotoApp();
+        } catch (IllegalArgumentException | PermissionDeniedException e) {
+            showError(e.getMessage());
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Could not save the report", e);
+            showError("Could not save the report: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Opens a map to choose the location and fills the latitude and longitude fields
+     * with the chosen point. The fields can still be typed in as well.
+     */
+    @FXML
+    private void pickOnMapPressed() {
+        application.pickLocation(GeoPoint.tryParse(latitude.getText(), longitude.getText()))
+                .ifPresent(point -> {
+                    latitude.setText(point.formattedLatitude());
+                    longitude.setText(point.formattedLongitude());
+                });
+    }
+
+    private void showError(String text) {
+        errorMessage.setText(text);
+        errorMessage.setVisible(true);
     }
 }
