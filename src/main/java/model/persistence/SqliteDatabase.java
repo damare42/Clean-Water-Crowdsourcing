@@ -51,6 +51,9 @@ public final class SqliteDatabase implements AutoCloseable {
      * values from 0 to 1,000,000; NaN cannot be stored because SQLite turns it into
      * NULL, and infinity fails the range check) and the security log, which triggers
      * keep append-only.
+     * <p>
+     * Version 3 adds {@code app_settings}, a small key/value table for settings of this
+     * installation (such as the approximate-location mode and its cached result).
      */
     private static final List<List<String>> MIGRATIONS = List.of(
             List.of("""
@@ -115,7 +118,12 @@ public final class SqliteDatabase implements AutoCloseable {
                     CREATE TRIGGER security_log_no_delete BEFORE DELETE ON security_log
                     BEGIN
                         SELECT RAISE(ABORT, 'the security log is append-only');
-                    END"""));
+                    END"""),
+            List.of("""
+                    CREATE TABLE app_settings (
+                        key   TEXT NOT NULL PRIMARY KEY CHECK (key <> ''),
+                        value TEXT NOT NULL
+                    )"""));
 
     private static final Set<PosixFilePermission> PRIVATE_DIRECTORY =
             PosixFilePermissions.fromString("rwx------");
