@@ -35,7 +35,7 @@ public final class IpLocationParser {
      * (Vietnamese, decomposed: a vowel with a tone mark and a circumflex or breve); more
      * only stack marks on top of each other ("Zalgo" text) and spill over nearby labels.
      */
-    public static final int MAX_COMBINING_MARKS = 2;
+    public static final int MAX_COMBINING_MARKS = 3;
 
     private IpLocationParser() {
     }
@@ -102,10 +102,12 @@ public final class IpLocationParser {
 
     /**
      * Cleans a text from outside for display: removes control and format characters
-     * (Unicode categories Cc and Cf, which include the bidirectional overrides), keeps at
-     * most {@value #MAX_COMBINING_MARKS} combining marks (Unicode categories Mn, Me and
-     * Mc) on each character, turns every run of whitespace into one space and trims, and
-     * caps the length at {@value #MAX_LABEL_LENGTH}.
+     * (Unicode categories Cc and Cf, which include the bidirectional overrides) and the
+     * invisible Hangul filler letters, keeps at most {@value #MAX_COMBINING_MARKS}
+     * stacking combining marks (Unicode categories Mn and Me) on each character, turns
+     * every run of whitespace into one space and trims, and caps the length at
+     * {@value #MAX_LABEL_LENGTH}. Spacing marks (Mc, e.g. Indic and Burmese vowel signs)
+     * do not stack vertically, so they are kept and not counted.
      *
      * @param text any text
      * @return the cleaned text
@@ -129,15 +131,15 @@ public final class IpLocationParser {
                 continue;
             }
             if (type == Character.CONTROL || type == Character.FORMAT || type == Character.UNASSIGNED
-                    || type == Character.SURROGATE || type == Character.PRIVATE_USE) {
+                    || type == Character.SURROGATE || type == Character.PRIVATE_USE || isHangulFiller(cp)) {
                 continue;
             }
-            if (isCombiningMark(type)) {
+            if (isStackingMark(type)) {
                 if (marks >= MAX_COMBINING_MARKS) {
                     continue;
                 }
                 marks++;
-            } else {
+            } else if (type != Character.COMBINING_SPACING_MARK) {
                 marks = 0;
             }
             if (space) {
@@ -149,9 +151,13 @@ public final class IpLocationParser {
         return out.toString();
     }
 
-    private static boolean isCombiningMark(int type) {
-        return type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK
-                || type == Character.COMBINING_SPACING_MARK;
+    private static boolean isStackingMark(int type) {
+        return type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK;
+    }
+
+    /** Invisible letters that would otherwise reset the mark count. */
+    private static boolean isHangulFiller(int cp) {
+        return cp == 0x3164 || cp == 0x115F || cp == 0x1160 || cp == 0xFFA0;
     }
 
     private static String cap(String text) {

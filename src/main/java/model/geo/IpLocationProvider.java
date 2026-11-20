@@ -116,9 +116,11 @@ public final class IpLocationProvider implements LocationProvider {
             future.cancel(true);
             return fail(e.getClass().getSimpleName(), status.get());
         } catch (InterruptedException e) {
+            // Normal on shutdown or when a newer lookup replaces this one: not a failure.
             future.cancel(true);
             Thread.currentThread().interrupt();
-            return fail(e.getClass().getSimpleName(), status.get());
+            LOGGER.log(Level.FINE, "Location lookup interrupted");
+            return Optional.empty();
         } catch (ExecutionException e) {
             Throwable cause = e.getCause() == null ? e : e.getCause();
             return fail(cause.getClass().getSimpleName(), status.get());
