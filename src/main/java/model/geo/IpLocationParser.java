@@ -30,6 +30,12 @@ public final class IpLocationParser {
 
     /** Longest place name kept, in characters. */
     public static final int MAX_LABEL_LENGTH = 80;
+    /**
+     * Most combining marks kept on one base character. Real place names need at most two
+     * (Vietnamese, decomposed: a vowel with a tone mark and a circumflex or breve); more
+     * only stack marks on top of each other ("Zalgo" text) and spill over nearby labels.
+     */
+    public static final int MAX_COMBINING_MARKS = 2;
 
     private IpLocationParser() {
     }
@@ -96,9 +102,10 @@ public final class IpLocationParser {
 
     /**
      * Cleans a text from outside for display: removes control and format characters
-     * (Unicode categories Cc and Cf, which include the bidirectional overrides),
-     * turns every run of whitespace into one space and trims, and caps the length at
-     * {@value #MAX_LABEL_LENGTH}.
+     * (Unicode categories Cc and Cf, which include the bidirectional overrides), keeps at
+     * most {@value #MAX_COMBINING_MARKS} combining marks (Unicode categories Mn, Me and
+     * Mc) on each character, turns every run of whitespace into one space and trims, and
+     * caps the length at {@value #MAX_LABEL_LENGTH}.
      *
      * @param text any text
      * @return the cleaned text
@@ -110,17 +117,28 @@ public final class IpLocationParser {
     private static String clean(String text) {
         StringBuilder out = new StringBuilder(text.length());
         boolean space = false;
+        // Combining marks kept since the last base character.
+        int marks = 0;
         for (int i = 0; i < text.length(); ) {
             int cp = text.codePointAt(i);
             i += Character.charCount(cp);
             int type = Character.getType(cp);
             if (Character.isWhitespace(cp) || Character.isSpaceChar(cp)) {
                 space = out.length() > 0;
+                marks = 0;
                 continue;
             }
             if (type == Character.CONTROL || type == Character.FORMAT || type == Character.UNASSIGNED
                     || type == Character.SURROGATE || type == Character.PRIVATE_USE) {
                 continue;
+            }
+            if (isCombiningMark(type)) {
+                if (marks >= MAX_COMBINING_MARKS) {
+                    continue;
+                }
+                marks++;
+            } else {
+                marks = 0;
             }
             if (space) {
                 out.append(' ');
@@ -129,6 +147,11 @@ public final class IpLocationParser {
             out.appendCodePoint(cp);
         }
         return out.toString();
+    }
+
+    private static boolean isCombiningMark(int type) {
+        return type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK
+                || type == Character.COMBINING_SPACING_MARK;
     }
 
     private static String cap(String text) {
