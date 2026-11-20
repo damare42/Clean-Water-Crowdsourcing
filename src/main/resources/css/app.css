@@ -686,3 +686,64 @@
     -fx-text-fill: -cwc-text-muted;
     -fx-text-alignment: center;
 }
+
+/* ------------------------------------------------------------------ forms */
+.page-scroll,
+.page-scroll > .viewport {
+    -fx-background-color: -cwc-app-bg;
+}
+
+.section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cwc-text;
+    -fx-padding: 4px 0 0 0;
+}
+
+.meta-line > .label {
+    -fx-text-fill: -cwc-text-muted;
+}
+
+.text-input.read-only-field {
+    -color-input-bg: -cwc-app-bg;
+    -color-input-bg-focused: -cwc-app-bg;
+    -color-input-border: -cwc-border-muted;
+}
+
+/* ----------------------------------------------------------- map picker */
+.picker-header {
+    -fx-padding: 12px 16px 12px 16px;
+    -fx-spacing: 10px;
+    -fx-alignment: center-left;
+    -fx-background-color: -cwc-brand-50;
+    -fx-border-color: transparent transparent -cwc-brand-200 transparent;
+}
+
+.picker-header .ikonli-font-icon {
+    -fx-icon-color: -cwc-brand-700;
+    -fx-icon-size: 18px;
+}
+
+.picker-header > .label {
+    -fx-text-fill: -cwc-brand-800;
+}
+
+.picker-footer {
+    -fx-padding: 12px 16px 12px 16px;
+    -fx-spacing: 8px;
+    -fx-alignment: center-left;
+    -fx-border-color: -cwc-border-muted transparent transparent transparent;
+}
+
+.selection-chip {
+    -fx-background-color: -cwc-app-bg;
+    -fx-background-radius: 999px;
+    -fx-border-color: -cwc-border;
+    -fx-border-radius: 999px;
+    -fx-padding: 4px 12px 4px 10px;
+    -fx-graphic-text-gap: 6px;
+}
+
+.selection-chip .ikonli-font-icon {
+    -fx-icon-color: -cwc-brand-700;
+}

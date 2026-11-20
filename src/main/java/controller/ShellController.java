@@ -105,6 +105,14 @@ public class ShellController {
         show(adminSection, allowed(Permission.MANAGE_USERS));
         show(manageAccounts, allowed(Permission.MANAGE_USERS));
         show(securityLog, allowed(Permission.MANAGE_USERS));
+        showAccount(account);
+    }
+
+    /**
+     * Shows the account's name and role in the user menu (again, after a profile change).
+     * @param account the signed-in account, or null
+     */
+    public void showAccount(Account account) {
         if (account == null) {
             username.setVisible(false);
             return;
@@ -113,7 +121,7 @@ public class ShellController {
         fullName.setText(name.isEmpty() ? account.getId() : name);
         initials.setText(initialsOf(account));
         roleBadge.setText(account.getType().name());
-        roleBadge.getStyleClass().add(Badges.roleStyle(account.getType()));
+        roleBadge.getStyleClass().setAll("label", "badge", Badges.roleStyle(account.getType()));
         username.setAccessibleText("Account menu for " + account.getId());
         username.setTooltip(new javafx.scene.control.Tooltip(fullName.getText() + " (@" + account.getId()
                 + "): profile and log out"));

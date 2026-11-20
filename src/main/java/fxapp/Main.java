@@ -77,6 +77,8 @@ public class Main extends Application {
     private static final double MINIMUM_WINDOW_HEIGHT = 640.0;
     private static final double INITIAL_WINDOW_WIDTH = 1280.0;
     private static final double INITIAL_WINDOW_HEIGHT = 800.0;
+    private static final double PICKER_MIN_WIDTH = 600.0;
+    private static final double PICKER_MIN_HEIGHT = 420.0;
     /** The window never starts larger than this share of the screen. */
     private static final double MAXIMUM_SCREEN_SHARE = 0.9;
 
@@ -271,6 +273,15 @@ public class Main extends Application {
             page.setApp(this);
         } catch (IOException | RuntimeException ex) {
             LOGGER.log(Level.SEVERE, "Could not load page " + fxml, ex);
+        }
+    }
+
+    /**
+     * Updates the user menu after the signed-in account's profile changed.
+     */
+    public void accountChanged() {
+        if (shell != null) {
+            shell.showAccount(loggedAccount);
         }
     }
 
@@ -475,6 +486,9 @@ public class Main extends Application {
         try {
             FXMLLoader loader = load("/view/MapPicker.fxml");
             Stage dialog = dialogStage(loader.getRoot(), "Pick a location");
+            dialog.setResizable(true);
+            dialog.setMinWidth(PICKER_MIN_WIDTH);
+            dialog.setMinHeight(PICKER_MIN_HEIGHT);
             MapPickerController controller = loader.getController();
             controller.setUp(this, dialog, initial);
             dialog.showAndWait();

@@ -44,6 +44,7 @@ public final class Banners {
         banner.setText(text);
         banner.setVisible(true);
         banner.setManaged(true);
+        banner.applyCss();
     }
 
     /**
