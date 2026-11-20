@@ -24,8 +24,10 @@ freely (down to 960x640) and keeps its size when you move between pages.
   at the bottom right says where it came from. **Locate me** looks it up again and
   centres the map on it; **All reports** zooms out to show every report. Every water
   source report is a pin on an OpenStreetMap map. Workers and
-  managers also see water purity reports, drawn as round teal markers (a legend explains
-  the two kinds). Click a marker to see its fields; **Details** in the popup opens the
+  managers also see water purity reports, drawn as round dots. Pins and dots are coloured
+  by the report's condition: green for Potable or Safe, teal for Clear, amber for Muddy or
+  Treatable, red for Waste or Unsafe (the legend at the bottom left explains the shapes
+  and colours). Click a marker to see its fields; **Details** in the popup opens the
   full report. The **Reports** panel on the right lists the same reports as cards, newest
   first: click a card to centre the map on it, double-click it (or press ENTER) for the
   details. The panel starts hidden in narrow windows; **Reports** on the map shows it.
