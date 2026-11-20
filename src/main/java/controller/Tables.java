@@ -1,6 +1,7 @@
 package controller;
 
 import atlantafx.base.theme.Styles;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
@@ -8,6 +9,7 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
+import javafx.scene.text.Text;
 
 import java.util.function.Function;
 
@@ -52,6 +54,40 @@ final class Tables {
                     tip.setText(text);
                     setTooltip(text == null || text.isEmpty() ? null : tip);
                 }
+            }
+        });
+    }
+
+    /**
+     * Like {@link #column(TableColumn, Function, Function, boolean)} with a tooltip, but
+     * long text wraps onto more lines (the row grows) instead of being cut off with "...".
+     */
+    static <S, T> void wrappingColumn(TableColumn<S, T> column, Function<S, T> value, Function<T, String> format) {
+        column.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(value.apply(cell.getValue())));
+        column.setCellFactory(c -> new TableCell<>() {
+            private final Tooltip tip = new Tooltip();
+            private final Text text = new Text();
+
+            {
+                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                text.getStyleClass().add("wrapping-cell-text");
+                // The cell's own text colour (it changes on selected rows) and font.
+                text.fillProperty().bind(textFillProperty());
+                text.fontProperty().bind(fontProperty());
+                text.wrappingWidthProperty().bind(Bindings.createDoubleBinding(
+                        () -> Math.max(0, column.getWidth() - snappedLeftInset() - snappedRightInset() - 1),
+                        column.widthProperty(), paddingProperty()));
+            }
+
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                String shown = empty || item == null ? null : format.apply(item);
+                setText(shown);
+                text.setText(shown == null ? "" : shown);
+                setGraphic(shown == null ? null : text);
+                tip.setText(shown);
+                setTooltip(shown == null || shown.isEmpty() ? null : tip);
             }
         });
     }

@@ -56,8 +56,9 @@ freely (down to 960x640) and keeps its size when you move between pages.
   account. Deleting an account keeps the reports it filed, still showing its id as the
   reporter, and its security log entries; the id becomes free again, so a new account
   could later register the same id.
-- **Security log** (administrators): the newest 1000 security events, newest first;
-  see [Security log](#security-log).
+- **Security log** (administrators): the newest 1000 security events, newest first
+  (long details wrap onto more lines; the full text is also in the cell's tooltip); see
+  [Security log](#security-log).
 - **Profile** (user menu): change your name, e-mail, phone and address; the account type
   and username cannot be changed. Its **Privacy** section sets how this computer's
   approximate location is found (see [Privacy](#privacy)).
