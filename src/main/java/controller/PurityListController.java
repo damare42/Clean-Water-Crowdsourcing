@@ -118,9 +118,7 @@ public class PurityListController implements Initializable, Page {
     }
 
     private void showMessage(String text) {
-        message.setText(text);
-        message.setVisible(true);
-        message.setManaged(true);
+        Banners.show(message, text, Banners.Kind.DANGER);
     }
 
     /**
@@ -144,13 +142,5 @@ public class PurityListController implements Initializable, Page {
             event.consume();
             detailsPressed();
         }
-    }
-
-    /**
-     * Goes back to the map.
-     */
-    @FXML
-    private void backPressed() {
-        application.gotoApp();
     }
 }

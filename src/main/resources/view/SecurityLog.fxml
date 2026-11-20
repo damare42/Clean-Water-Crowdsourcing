@@ -1,55 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.SecurityLogController">
+<VBox styleClass="page" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.SecurityLogController">
    <children>
-      <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-         <top>
-            <VBox alignment="CENTER" spacing="4.0" BorderPane.alignment="CENTER">
+      <HBox styleClass="page-header">
+         <children>
+            <VBox minWidth="0.0" spacing="4.0" HBox.hgrow="ALWAYS">
                <children>
-                  <Label text="Security Log (newest first)" />
-                  <Label fx:id="message" managed="false" textFill="#d32020" visible="false" wrapText="true" />
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <Label styleClass="page-title" text="Security log" />
+                        <Label fx:id="countBadge" styleClass="badge" visible="false" />
+                     </children>
+                  </HBox>
+                  <Label styleClass="page-subtitle" text="Sign-ins, registrations and account changes, newest first." wrapText="true" />
                </children>
-               <padding>
-                  <Insets bottom="6.0" top="10.0" />
-               </padding>
             </VBox>
-         </top>
-         <center>
-            <TableView fx:id="eventTable" BorderPane.alignment="CENTER">
-               <placeholder>
-                  <Label text="No events yet" />
-               </placeholder>
-               <columns>
-                  <TableColumn fx:id="sequenceColumn" prefWidth="50.0" text="#" />
-                  <TableColumn fx:id="timeColumn" prefWidth="140.0" text="Time" />
-                  <TableColumn fx:id="typeColumn" prefWidth="130.0" text="Event" />
-                  <TableColumn fx:id="actorColumn" prefWidth="100.0" text="By" />
-                  <TableColumn fx:id="subjectColumn" prefWidth="110.0" text="Account" />
-                  <TableColumn fx:id="detailColumn" prefWidth="230.0" text="Detail" />
-               </columns>
-            </TableView>
-         </center>
-         <bottom>
-            <HBox alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
+            <HBox styleClass="page-actions">
                <children>
-                  <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#refreshPressed" text="Refresh" />
-                  <Button fx:id="goBack" mnemonicParsing="false" onAction="#backPressed" text="Back" />
+                  <Button minWidth="-Infinity" fx:id="refreshButton" mnemonicParsing="false" onAction="#refreshPressed" text="Refresh">
+                     <graphic><FontIcon iconLiteral="mdomz-refresh" /></graphic>
+                     <tooltip><Tooltip text="Load the newest events" /></tooltip>
+                  </Button>
                </children>
-               <padding>
-                  <Insets bottom="10.0" top="10.0" />
-               </padding>
             </HBox>
-         </bottom>
-      </BorderPane>
+         </children>
+      </HBox>
+      <Label fx:id="message" managed="false" maxWidth="Infinity" styleClass="banner, banner-danger" visible="false" wrapText="true">
+         <graphic><FontIcon iconLiteral="mdoal-error_outline" /></graphic>
+      </Label>
+      <TableView fx:id="eventTable" VBox.vgrow="ALWAYS">
+         <placeholder>
+            <Label styleClass="page-subtitle" text="No events yet" />
+         </placeholder>
+         <columns>
+                  <TableColumn fx:id="sequenceColumn" minWidth="44" prefWidth="50" text="#" />
+                  <TableColumn fx:id="timeColumn" minWidth="150" prefWidth="160" text="Time" />
+                  <TableColumn fx:id="typeColumn" minWidth="150" prefWidth="170" text="Event" />
+                  <TableColumn fx:id="actorColumn" minWidth="80" prefWidth="100" text="By" />
+                  <TableColumn fx:id="subjectColumn" minWidth="80" prefWidth="110" text="Account" />
+                  <TableColumn fx:id="detailColumn" minWidth="150" prefWidth="260" text="Detail" />
+         </columns>
+      </TableView>
    </children>
-</AnchorPane>
+</VBox>

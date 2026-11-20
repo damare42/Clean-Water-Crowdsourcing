@@ -119,9 +119,7 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
     }
 
     private void showMessage(String text) {
-        message.setText(text);
-        message.setVisible(true);
-        message.setManaged(true);
+        Banners.show(message, text, Banners.Kind.DANGER);
     }
 
     /**
@@ -145,13 +143,5 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
             event.consume();
             detailsPressed();
         }
-    }
-
-    /**
-     * Goes to the previous page when the button clicked
-     */
-    @FXML
-    private void goBackButtonPressed() {
-        application.gotoApp();
     }
 }

@@ -85,16 +85,6 @@ public class SecurityLogController implements Initializable, Page {
     }
 
     private void showMessage(String text) {
-        message.setText(text);
-        message.setVisible(true);
-        message.setManaged(true);
-    }
-
-    /**
-     * Goes back to the map.
-     */
-    @FXML
-    private void backPressed() {
-        application.gotoApp();
+        Banners.show(message, text, Banners.Kind.DANGER);
     }
 }

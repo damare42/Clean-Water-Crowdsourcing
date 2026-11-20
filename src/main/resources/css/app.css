@@ -369,8 +369,8 @@
     -fx-text-fill: -cwc-sidebar-fg;
     -fx-alignment: center-left;
     -fx-max-width: infinity;
-    -fx-padding: 8px 12px 8px 10px;
-    -fx-graphic-text-gap: 12px;
+    -fx-padding: 8px 10px 8px 10px;
+    -fx-graphic-text-gap: 10px;
     -fx-cursor: hand;
 }
 
@@ -386,7 +386,7 @@
 .sidebar .nav-item:selected {
     -fx-background-color: -cwc-sidebar-active;
     -fx-border-color: transparent transparent transparent -cwc-brand-500;
-    -fx-font-weight: bold;
+    -fx-text-fill: white;
 }
 
 .sidebar .nav-item:selected .ikonli-font-icon {
