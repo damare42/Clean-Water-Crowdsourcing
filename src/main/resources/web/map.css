@@ -159,3 +159,12 @@ html, body, #map {
 .leaflet-bar a {
     color: #1f2328;
 }
+
+/* Approximate location of this computer (drawn as SVG, not interactive) */
+.cwc-user-accuracy {
+    pointer-events: none;
+}
+
+.cwc-user-dot {
+    pointer-events: none;
+}

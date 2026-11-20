@@ -4,12 +4,18 @@ import fxapp.Main;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.VBox;
 import model.Account;
 import model.Validation;
+import model.geo.LocationMode;
+import model.geo.LocationService;
 import model.persistence.DataAccessException;
 import model.service.PermissionDeniedException;
 
@@ -49,7 +55,24 @@ public class ProfileController implements Initializable, Page {
     @FXML
     private Label handle;
 
+    @FXML
+    private ScrollPane profileScroll;
+    @FXML
+    private VBox privacySection;
+    @FXML
+    private ToggleGroup locationModeGroup;
+    @FXML
+    private RadioButton locationModeIp;
+    @FXML
+    private RadioButton locationModeTimeZone;
+    @FXML
+    private RadioButton locationModeOff;
+    @FXML
+    private Label locationIpNote;
+
     private final FieldErrors fieldErrors = new FieldErrors();
+    /** True while the page selects the stored mode, which must not count as a change. */
+    private boolean showingMode;
 
     private Main application;
 
@@ -69,6 +92,59 @@ public class ProfileController implements Initializable, Page {
         phone.setText(loggedAccount.getPhone());
         address.setText(loggedAccount.getAddress());
         showIdentity(loggedAccount);
+        showLocationSetting();
+    }
+
+    /**
+     * Shows the location setting of this installation. A change is saved at once (it
+     * is a setting of the computer, not part of the profile).
+     */
+    private void showLocationSetting() {
+        LocationService locations = application.getContext().getLocationService();
+        String host = locations.ipLookupAvailable() ? locations.providerHost() : "";
+        locationModeIp.setText(host.isEmpty() ? "Look up using my internet address"
+                : "Look up using my internet address \u2013 sends your IP address to " + host);
+        boolean ipAvailable = locations.ipLookupAvailable();
+        locationModeIp.setDisable(!ipAvailable);
+        locationIpNote.setVisible(!ipAvailable);
+        locationIpNote.setManaged(!ipAvailable);
+        showingMode = true;
+        locationModeGroup.selectToggle(switch (locations.effectiveMode()) {
+            case IP_LOOKUP -> locationModeIp;
+            case TIME_ZONE -> locationModeTimeZone;
+            case OFF -> locationModeOff;
+        });
+        showingMode = false;
+        locationModeGroup.selectedToggleProperty().addListener((observable, old, selected) -> {
+            if (selected == null) {
+                // A radio group always has a choice: keep the old one.
+                old.setSelected(true);
+            } else if (!showingMode) {
+                saveLocationMode(selected == locationModeIp ? LocationMode.IP_LOOKUP
+                        : selected == locationModeTimeZone ? LocationMode.TIME_ZONE : LocationMode.OFF);
+            }
+        });
+    }
+
+    private void saveLocationMode(LocationMode mode) {
+        try {
+            application.getContext().getLocationService().setMode(application.getLoggedAccount(), mode);
+            application.locationSettingChanged();
+            application.showToast("Location setting saved");
+        } catch (DataAccessException e) {
+            LOGGER.log(Level.SEVERE, "Could not save the location setting", e);
+            showMessage("Could not save the location setting: " + e.getMessage(), Banners.Kind.DANGER);
+        }
+    }
+
+    /**
+     * Scrolls to the Privacy section and puts the keyboard focus on the chosen option.
+     */
+    public void showPrivacy() {
+        profileScroll.setVvalue(1.0);
+        if (locationModeGroup.getSelectedToggle() instanceof RadioButton selected) {
+            selected.requestFocus();
+        }
     }
 
     private void showIdentity(Account account) {

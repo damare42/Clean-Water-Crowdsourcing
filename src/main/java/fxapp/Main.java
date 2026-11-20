@@ -2,9 +2,11 @@ package fxapp;
 
 
 import controller.AppViewController;
+import controller.LeafletMap;
 import controller.CreateAdminController;
 import controller.MapPickerController;
 import controller.Page;
+import controller.ProfileController;
 import controller.ReportDetailsController;
 import controller.ShellController;
 import javafx.application.Application;
@@ -22,6 +24,9 @@ import model.Account;
 import model.GeoPoint;
 import model.Report;
 import model.Validation;
+import model.geo.ApproximateLocation;
+import model.geo.LocationMode;
+import model.geo.LocationService;
 import model.persistence.DataAccessException;
 import model.persistence.DatabaseLocation;
 
@@ -73,6 +78,19 @@ public class Main extends Application {
     private ShellController shell;
     /** Runs slow work (password hashing) off the FX thread, one job at a time. */
     private ExecutorService background;
+    /**
+     * Runs location lookups (network calls of a few seconds at most), so they never
+     * queue up behind password hashing.
+     */
+    private ExecutorService locationLookups;
+    /** The approximate location of this computer for the current session, if known. */
+    private ApproximateLocation sessionLocation;
+    /** Counts lookups; a result is only used if no newer lookup was started since. */
+    private long locationGeneration;
+    /** True while a lookup started by "Locate me" runs. */
+    private boolean locating;
+    /** The map page while it is shown, so location results can be drawn on it. */
+    private AppViewController currentMap;
     private static final double MINIMUM_WINDOW_WIDTH = 960.0;
     private static final double MINIMUM_WINDOW_HEIGHT = 640.0;
     private static final double INITIAL_WINDOW_WIDTH = 1280.0;
@@ -91,6 +109,11 @@ public class Main extends Application {
         }
         background = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "cwc-background");
+            thread.setDaemon(true);
+            return thread;
+        });
+        locationLookups = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "cwc-location");
             thread.setDaemon(true);
             return thread;
         });
@@ -194,6 +217,11 @@ public class Main extends Application {
             background.shutdownNow();
             background = null;
         }
+        if (locationLookups != null) {
+            locationLookups.shutdownNow();
+            locationLookups = null;
+        }
+        forgetLocation();
         if (context != null) {
             context.close();
             context = null;
@@ -241,6 +269,7 @@ public class Main extends Application {
      * @return the page's controller, or empty if the page could not be loaded
      */
     private <C extends Page> Optional<C> showPage(String fxml) {
+        currentMap = null;
         try {
             if (shell == null || shell.getAccount() != loggedAccount) {
                 FXMLLoader shellLoader = load(SHELL);
@@ -388,6 +417,7 @@ public class Main extends Application {
     public void loginSucceeded(Account account) {
         loggedAccount = account;
         gotoApp();
+        requestLocation(false);
     }
 
     /**
@@ -402,6 +432,7 @@ public class Main extends Application {
         }
         loggedAccount = account.get();
         gotoProfile();
+        requestLocation(false);
         return true;
     }
 
@@ -411,8 +442,123 @@ public class Main extends Application {
      */
     public boolean accountLogout() {
         loggedAccount = null;
+        forgetLocation();
         gotoWelcome();
         return true;
+    }
+
+    /**
+     * Called by the map page once it is set up: draws the session's location on it.
+     * @param map the map page
+     */
+    public void mapPageShown(AppViewController map) {
+        currentMap = map;
+        LocationService locations = context.getLocationService();
+        if (locations.effectiveMode() == LocationMode.OFF) {
+            map.showLocationOff();
+        } else if (sessionLocation != null) {
+            map.showUserLocation(sessionLocation, LeafletMap.Recenter.AUTO, locations.providerHost());
+        } else {
+            map.hideUserLocation();
+        }
+        map.setLocating(locating);
+    }
+
+    /**
+     * "Locate me": looks the location up again (skipping the cache) and centres the
+     * map on it.
+     */
+    public void locateMe() {
+        requestLocation(true);
+    }
+
+    /**
+     * Finds the approximate location of this computer in the background and draws it
+     * on the map page when it arrives. Never blocks: a cached result is used at once,
+     * a lookup runs on its own thread, and a result is dropped if the account has
+     * logged out, or a newer lookup was started, in the meantime.
+     *
+     * @param force skip the cache and always centre the map ("Locate me")
+     */
+    private void requestLocation(boolean force) {
+        long generation = ++locationGeneration;
+        Account account = loggedAccount;
+        LocationService locations = context.getLocationService();
+        if (locations.effectiveMode() == LocationMode.OFF) {
+            sessionLocation = null;
+            setLocating(false);
+            if (currentMap != null) {
+                currentMap.showLocationOff();
+            }
+            return;
+        }
+        if (!force) {
+            Optional<ApproximateLocation> cached = locations.cached();
+            if (cached.isPresent()) {
+                applyLocation(cached.get(), LeafletMap.Recenter.AUTO);
+                return;
+            }
+        }
+        setLocating(force);
+        locationLookups.execute(() -> {
+            Optional<ApproximateLocation> found;
+            try {
+                found = locations.locate(force);
+            } catch (RuntimeException e) {
+                LOGGER.log(Level.WARNING, "Could not find the approximate location", e);
+                found = Optional.empty();
+            }
+            Optional<ApproximateLocation> result = found;
+            Platform.runLater(() -> {
+                if (generation != locationGeneration || loggedAccount != account || account == null) {
+                    return;
+                }
+                setLocating(false);
+                result.ifPresent(location -> applyLocation(location,
+                        force ? LeafletMap.Recenter.FORCE : LeafletMap.Recenter.AUTO));
+            });
+        });
+    }
+
+    private void applyLocation(ApproximateLocation location, LeafletMap.Recenter recenter) {
+        sessionLocation = location;
+        if (currentMap != null) {
+            currentMap.showUserLocation(location, recenter, context.getLocationService().providerHost());
+        }
+    }
+
+    private void setLocating(boolean busy) {
+        locating = busy;
+        if (currentMap != null) {
+            currentMap.setLocating(busy);
+        }
+    }
+
+    /**
+     * Forgets the session's location and drops any lookup still running (logout).
+     */
+    private void forgetLocation() {
+        locationGeneration++;
+        sessionLocation = null;
+        locating = false;
+    }
+
+    /**
+     * Called when the location setting changed: looks the location up again with the
+     * new setting (or forgets it if locating is now off).
+     */
+    public void locationSettingChanged() {
+        sessionLocation = null;
+        if (loggedAccount != null) {
+            requestLocation(false);
+        }
+    }
+
+    /**
+     * Shows the location setting (the Privacy section of the profile page).
+     */
+    public void gotoLocationSettings() {
+        this.<ProfileController>showPage(PAGE_PROFILE).ifPresent(ProfileController::showPrivacy);
     }
 
     private static FXMLLoader load(String fxml) throws IOException {

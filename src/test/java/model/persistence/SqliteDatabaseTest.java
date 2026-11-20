@@ -57,7 +57,7 @@ class SqliteDatabaseTest {
         try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.file(file))) {
             assertTrue(Files.isRegularFile(file));
             assertEquals(SqliteDatabase.SCHEMA_VERSION, database.schemaVersion());
-            assertEquals(2, SqliteDatabase.SCHEMA_VERSION);
+            assertEquals(3, SqliteDatabase.SCHEMA_VERSION);
             assertTrue(tables(database).containsAll(List.of("accounts", "water_source_reports",
                             "water_purity_reports", "security_log")),
                     tables(database).toString());
@@ -314,7 +314,7 @@ class SqliteDatabaseTest {
         }
 
         try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.file(file))) {
-            assertEquals(2, database.schemaVersion());
+            assertEquals(3, database.schemaVersion());
             assertTrue(tables(database).containsAll(List.of("water_purity_reports", "security_log")));
             SqliteAccountRepository accounts = new SqliteAccountRepository(database);
             Account alice = accounts.findById("ALICE").orElseThrow();
@@ -334,7 +334,7 @@ class SqliteDatabaseTest {
             assertTrue(accounts.setBanned("alice", true));
         }
         try (SqliteDatabase database = SqliteDatabase.open(DatabaseLocation.file(file))) {
-            assertEquals(2, database.schemaVersion());
+            assertEquals(3, database.schemaVersion());
             assertTrue(new SqliteAccountRepository(database).isBanned("alice"), "reopening does not migrate again");
         }
     }

@@ -45,6 +45,10 @@
         <!-- Id of the first administrator, created at start-up while none exists; empty
              means no bootstrap. Use: mvn javafx:run -Dcwc.bootstrapAdmin=admin -->
         <cwc.bootstrapAdmin></cwc.bootstrapAdmin>
+        <!-- Approximate-location lookup URL for mvn javafx:run. "default" means the built-in
+             provider (https://ipapi.co/json/); "off" switches IP lookup off.
+             Use: mvn javafx:run -Dcwc.geo.url=off  (an empty value also means off) -->
+        <cwc.geo.url>default</cwc.geo.url>
     </properties>
 
     <dependencies>
@@ -172,6 +176,7 @@
                     <options>
                         <option>-Dcwc.db.path=${cwc.db.path}</option>
                         <option>-Dcwc.bootstrapAdmin=${cwc.bootstrapAdmin}</option>
+                        <option>-Dcwc.geo.url=${cwc.geo.url}</option>
                     </options>
                 </configuration>
             </plugin>

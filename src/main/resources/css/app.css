@@ -583,7 +583,8 @@
 
 /* ---------------------------------------------------------------- map page */
 .map-actions {
-    -fx-spacing: 8px;
+    -fx-hgap: 8px;
+    -fx-vgap: 8px;
     -fx-padding: 10px 10px 10px 56px;
 }
 
@@ -852,4 +853,30 @@
 
 .history-chart .axis-label {
     -fx-text-fill: -cwc-text-muted;
+}
+
+/* --------------------------------------------- approximate location chip */
+.location-chip {
+    -fx-background-color: -cwc-border, -cwc-surface;
+    -fx-background-insets: 0, 1px;
+    -fx-background-radius: 8px, 7px;
+    -fx-padding: 8px 12px 6px 12px;
+    -fx-spacing: 2px;
+    -fx-effect: dropshadow(three-pass-box, rgba(31, 35, 40, 0.22), 8px, 0, 0, 2px);
+}
+
+.location-chip .location-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: -cwc-text;
+    -fx-graphic-text-gap: 8px;
+}
+
+.location-chip .location-label .ikonli-font-icon {
+    -fx-icon-color: -cwc-brand-700;
+    -fx-icon-size: 16px;
+}
+
+.location-chip .hyperlink {
+    -fx-padding: 0;
+    -fx-font-size: 12px;
 }

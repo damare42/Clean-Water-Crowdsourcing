@@ -4,14 +4,18 @@ import fxapp.Main;
 import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -22,6 +26,9 @@ import model.Permission;
 import model.Report;
 import model.WaterPurityReport;
 import model.WaterSourceReport;
+import model.geo.ApproximateLocation;
+import model.geo.LocationSource;
+import model.map.LocationJson;
 import model.map.MapMarker;
 import model.persistence.DataAccessException;
 import model.service.PermissionDeniedException;
@@ -54,7 +61,19 @@ public class AppViewController implements Initializable, Page {
     @FXML
     private WebView webView;
     @FXML
-    private HBox mapActions;
+    private FlowPane mapActions;
+    @FXML
+    private Button locateButton;
+    @FXML
+    private Button fitAllButton;
+    @FXML
+    private VBox locationChip;
+    @FXML
+    private Label locationLabel;
+    @FXML
+    private Label locationDisclosure;
+    @FXML
+    private Hyperlink locationChange;
     @FXML
     private Button reportSourceButton;
     @FXML
@@ -145,6 +164,108 @@ public class AppViewController implements Initializable, Page {
             }
         }, application::openExternalLink);
         showReports(account);
+        if (webView.getParent() instanceof Region mapArea) {
+            mapArea.widthProperty().addListener((observable, old, width) -> fitChip());
+        }
+        application.mapPageShown(this);
+    }
+
+    /** The chip never gets narrower than this. */
+    private static final double CHIP_MIN_WIDTH = 240;
+    /** Room kept free on the left of the map for the legend and the offline notice. */
+    private static final double CHIP_LEFT_CLEARANCE = 300;
+
+    /**
+     * Sizes the chip to its text, but never wider than the room right of the legend and
+     * offline notice (it then wraps).
+     */
+    private void fitChip() {
+        if (!(webView.getParent() instanceof Region mapArea)) {
+            return;
+        }
+        locationChip.applyCss();
+        Insets insets = locationChip.getInsets();
+        double natural = Math.max(locationLabel.prefWidth(-1), locationChange.getParent().prefWidth(-1))
+                + insets.getLeft() + insets.getRight() + 1;
+        double room = Math.max(CHIP_MIN_WIDTH, mapArea.getWidth() - CHIP_LEFT_CLEARANCE);
+        locationChip.setMaxWidth(Math.min(natural, room));
+    }
+
+    /**
+     * Shows the approximate location of this computer: on the map (dot and accuracy
+     * circle) and in the chip, as text in JavaFX labels only.
+     *
+     * @param location the location
+     * @param recenter whether the map may move to it
+     * @param providerHost the host of the IP lookup, named in the chip
+     */
+    public void showUserLocation(ApproximateLocation location, LeafletMap.Recenter recenter, String providerHost) {
+        map.showUserLocation(LocationJson.toJson(location), recenter);
+        if (location.source() == LocationSource.IP) {
+            String place = location.placeLabel().isEmpty() ? "" : ": " + location.placeLabel();
+            locationLabel.setText("Approximate location" + place + " (from your IP address)");
+            locationDisclosure.setText("Looked up via " + providerHost + ", which receives your IP address.");
+        } else {
+            locationLabel.setText("Approximate location: " + location.zoneId() + " time zone");
+            locationDisclosure.setText("Nothing leaves this computer.");
+        }
+        show(locationChip, true);
+        fitChip();
+        show(locateButton, true);
+        updateActionsVisibility();
+    }
+
+    /**
+     * Shows that locating is switched off: no location on the map, no Locate me.
+     */
+    public void showLocationOff() {
+        map.clearUserLocation();
+        locationLabel.setText("Location is off");
+        locationDisclosure.setText("");
+        show(locationChip, true);
+        fitChip();
+        show(locateButton, false);
+        updateActionsVisibility();
+    }
+
+    /**
+     * Shows no location (none is known yet, or none could be found).
+     */
+    public void hideUserLocation() {
+        show(locationChip, false);
+        show(locateButton, true);
+        updateActionsVisibility();
+    }
+
+    /**
+     * Shows that a forced lookup is running: Locate me is disabled with a spinner.
+     * @param busy whether a lookup is running
+     */
+    public void setLocating(boolean busy) {
+        locateButton.setDisable(busy);
+        if (busy) {
+            ProgressIndicator spinner = new ProgressIndicator();
+            spinner.setPrefSize(16, 16);
+            spinner.setMaxSize(16, 16);
+            locateButton.setGraphic(spinner);
+        } else {
+            locateButton.setGraphic(new FontIcon("mdomz-my_location"));
+        }
+    }
+
+    @FXML
+    private void locatePressed() {
+        application.locateMe();
+    }
+
+    @FXML
+    private void fitAllPressed() {
+        map.fitAll();
+    }
+
+    @FXML
+    private void changeLocationPressed() {
+        application.gotoLocationSettings();
     }
 
     private void showReports(Account account) {

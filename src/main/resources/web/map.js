@@ -25,6 +25,9 @@
         focusMarker: noop,
         enablePicking: noop,
         invalidateSize: noop,
+        setUserLocation: noop,
+        clearUserLocation: noop,
+        fitAll: noop,
         markerCount: function () {
             return 0;
         }
@@ -85,6 +88,19 @@
     });
 
     var markerLayer = L.layerGroup().addTo(map);
+    // The approximate location of this computer: its own layer, never counted as a marker.
+    var userLayer = L.layerGroup().addTo(map);
+    // The overview of all reports (the default view when no location is known).
+    var reportBounds = [];
+    // Set once the user moves or zooms the map, or a report is shown: from then on an
+    // automatic location result never moves the map.
+    var userInteracted = false;
+    var centredOnUser = false;
+    ['mousedown', 'wheel', 'keydown', 'touchstart', 'dblclick'].forEach(function (type) {
+        map.getContainer().addEventListener(type, function () {
+            userInteracted = true;
+        }, true);
+    });
     var markersByKey = {};
     var pickMarker = null;
     var picking = false;
@@ -195,10 +211,77 @@
             legend.remove();
             legendShown = false;
         }
-        if (bounds.length > 0) {
-            map.fitBounds(bounds, {maxZoom: 12, padding: [30, 30], animate: false});
+        reportBounds = bounds;
+        if (!centredOnUser) {
+            fitReports();
         }
         return markers.length;
+    }
+
+    function fitReports() {
+        if (reportBounds.length > 0) {
+            map.fitBounds(reportBounds, {maxZoom: 12, padding: [30, 30], animate: false});
+        }
+    }
+
+    function fitAll() {
+        userInteracted = true;
+        fitReports();
+        return true;
+    }
+
+    function finiteIn(value, min, max) {
+        return typeof value === 'number' && isFinite(value) && value >= min && value <= max;
+    }
+
+    // json: {"lat", "lon", "accuracyM", "kind": "ip" | "timezone"}; mode: "auto" (only
+    // if the user has not moved the map yet), "force" or "none". Returns whether the
+    // map was recentred.
+    function setUserLocation(json, mode) {
+        var where;
+        try {
+            where = JSON.parse(json);
+        } catch (e) {
+            return false;
+        }
+        if (!where || !finiteIn(where.lat, -90, 90) || !finiteIn(where.lon, -180, 180)
+                || !finiteIn(where.accuracyM, 1, 20000000)
+                || (where.kind !== 'ip' && where.kind !== 'timezone')) {
+            return false;
+        }
+        var timeZone = where.kind === 'timezone';
+        userLayer.clearLayers();
+        L.circle([where.lat, where.lon], {
+            radius: where.accuracyM,
+            className: 'cwc-user-accuracy' + (timeZone ? ' cwc-user-accuracy-tz' : ''),
+            interactive: false,
+            color: '#0e7490',
+            weight: 1.5,
+            opacity: 0.8,
+            dashArray: timeZone ? '6 6' : null,
+            fillColor: '#06b6d4',
+            fillOpacity: 0.10
+        }).addTo(userLayer);
+        L.circleMarker([where.lat, where.lon], {
+            radius: 7,
+            className: 'cwc-user-dot',
+            interactive: false,
+            color: '#ffffff',
+            weight: 3,
+            fillColor: '#0e7490',
+            fillOpacity: 1
+        }).addTo(userLayer);
+        var recenter = mode === 'force' || (mode === 'auto' && !userInteracted);
+        if (recenter) {
+            map.setView([where.lat, where.lon], timeZone ? 5 : 10, {animate: false});
+            centredOnUser = true;
+        }
+        return recenter;
+    }
+
+    function clearUserLocation() {
+        userLayer.clearLayers();
+        return true;
     }
 
     function focusMarker(kind, id) {
@@ -206,6 +289,7 @@
         if (!marker) {
             return false;
         }
+        userInteracted = true;
         map.setView(marker.getLatLng(), Math.max(map.getZoom(), 13), {animate: false});
         marker.openPopup();
         return true;
@@ -244,6 +328,9 @@
     window.cwcMap = {
         setMarkers: setMarkers,
         focusMarker: focusMarker,
+        setUserLocation: setUserLocation,
+        clearUserLocation: clearUserLocation,
+        fitAll: fitAll,
         enablePicking: enablePicking,
         invalidateSize: function () {
             map.invalidateSize({pan: false});

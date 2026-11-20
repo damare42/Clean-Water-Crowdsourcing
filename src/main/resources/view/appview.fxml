@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
@@ -19,7 +22,7 @@
       <StackPane minHeight="0.0" minWidth="0.0">
          <children>
             <WebView fx:id="webView" minHeight="0.0" minWidth="0.0" />
-            <HBox fx:id="mapActions" maxHeight="-Infinity" maxWidth="-Infinity" pickOnBounds="false" styleClass="map-actions" StackPane.alignment="TOP_LEFT">
+            <FlowPane fx:id="mapActions" maxHeight="-Infinity" pickOnBounds="false" styleClass="map-actions" StackPane.alignment="TOP_LEFT">
                <children>
                   <Button fx:id="reportSourceButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#createWaterSourceReportClicked" styleClass="accent" text="Report water source">
                      <graphic><FontIcon iconLiteral="mdoal-add_location_alt" /></graphic>
@@ -27,12 +30,36 @@
                   <Button fx:id="reportPurityButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#createPurityReportClicked" text="Report purity">
                      <graphic><FontIcon iconLiteral="mdomz-science" /></graphic>
                   </Button>
+                  <Button fx:id="locateButton" accessibleText="Locate me: centre the map on the approximate location of this computer" minWidth="-Infinity" mnemonicParsing="false" onAction="#locatePressed" text="Locate me">
+                     <graphic><FontIcon iconLiteral="mdomz-my_location" /></graphic>
+                     <tooltip><Tooltip text="Centre the map on the approximate location of this computer" /></tooltip>
+                  </Button>
+                  <Button fx:id="fitAllButton" accessibleText="All reports: show every report on the map" minWidth="-Infinity" mnemonicParsing="false" onAction="#fitAllPressed" text="All reports">
+                     <graphic><FontIcon iconLiteral="mdomz-zoom_out_map" /></graphic>
+                     <tooltip><Tooltip text="Show every report on the map" /></tooltip>
+                  </Button>
                   <Button fx:id="showPanelButton" accessibleText="Show the report list" minWidth="-Infinity" mnemonicParsing="false" onAction="#togglePanel" text="Reports">
                      <graphic><FontIcon iconLiteral="mdomz-view_list" /></graphic>
                      <tooltip><Tooltip text="Show the report list" /></tooltip>
                   </Button>
                </children>
-            </HBox>
+            </FlowPane>
+            <VBox fx:id="locationChip" managed="false" maxHeight="-Infinity" maxWidth="-Infinity" styleClass="location-chip" visible="false" StackPane.alignment="BOTTOM_RIGHT">
+               <children>
+                  <Label fx:id="locationLabel" minHeight="-Infinity" styleClass="location-label" wrapText="true">
+                     <graphic><FontIcon iconLiteral="mdomz-my_location" /></graphic>
+                  </Label>
+                  <HBox alignment="CENTER_LEFT" spacing="6.0">
+                     <children>
+                        <Label fx:id="locationDisclosure" minHeight="-Infinity" minWidth="0.0" styleClass="caption" wrapText="true" HBox.hgrow="ALWAYS" />
+                        <Hyperlink fx:id="locationChange" accessibleText="Change the location setting" minWidth="-Infinity" mnemonicParsing="false" onAction="#changeLocationPressed" text="Change" />
+                     </children>
+                  </HBox>
+               </children>
+               <StackPane.margin>
+                  <Insets bottom="30.0" right="10.0" />
+               </StackPane.margin>
+            </VBox>
          </children>
       </StackPane>
    </center>
