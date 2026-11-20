@@ -11,40 +11,51 @@ computers yet.
 
 ## Using the app
 
-After logging in, the main page shows the map and the links your account type allows
-(see [Roles and permissions](#roles-and-permissions)):
+The app opens on the welcome page: sign in with your username and password, or choose
+**Create an account** (pick User, Worker or Manager; administrators are created as
+described in [Creating the first administrator](#creating-the-first-administrator)).
+After signing in, a sidebar on the left shows the pages your account type allows (see
+[Roles and permissions](#roles-and-permissions)), and the menu at the bottom of the
+sidebar (your name and role) has **Profile** and **Log out**. The window can be resized
+freely (down to 960x640) and keeps its size when you move between pages.
 
 - **Map**: every water source report is a pin on an OpenStreetMap map. Workers and
-  managers also see water purity reports, drawn as round blue markers (a legend explains
+  managers also see water purity reports, drawn as round teal markers (a legend explains
   the two kinds). Click a marker to see its fields; **Details** in the popup opens the
-  full report.
-- **Create Water Source Report**: type the latitude and longitude, or press
-  **Pick on map** and click the spot; the chosen point fills both fields (up to 6 decimal
-  places).
-- **Report List**: a table of all water source reports with number, date, time,
+  full report. The **Reports** panel on the right lists the same reports as cards, newest
+  first: click a card to centre the map on it, double-click it (or press ENTER) for the
+  details. The panel starts hidden in narrow windows; **Reports** on the map shows it.
+  **Report water source** and **Report purity** on the map open the forms.
+- **Report water source**: type the latitude and longitude, or press **Pick on map** and
+  click the spot; the chosen point fills both fields (up to 6 decimal places). Choose the
+  type and condition and press **Submit report** (or ENTER); **Cancel** (or ESC) goes back
+  to the map. A problem is shown above the form and the field concerned is highlighted.
+- **Water source reports**: a table of all water source reports with number, date, time,
   reporter, type, condition, latitude and longitude. It starts sorted by report number;
   click a column header to sort by that column. Double-click a row (or select it and
   press **Details**, or press ENTER) to open the report. **Show on map** in the report
   window centres the map on it.
-- **Create Purity Report** (workers and managers): location (typed or picked on the
-  map), overall condition (Safe, Treatable or Unsafe), virus PPM and contaminant PPM.
-  PPM values are plain decimal numbers from 0 to 1,000,000 (no exponents). Purity reports
-  are numbered separately from source reports, starting at 1.
-- **Purity Reports** (workers and managers): a sortable table of all purity reports,
+- **Report purity** (workers and managers): location (typed or picked on the map),
+  overall condition (Safe, Treatable or Unsafe), virus PPM and contaminant PPM. PPM
+  values are plain decimal numbers from 0 to 1,000,000 (no exponents). Purity reports are
+  numbered separately from source reports, starting at 1.
+- **Purity reports** (workers and managers): a sortable table of all purity reports,
   with the same details window and **Show on map**.
-- **Purity History** (managers): enter a location (or pick it on the map), a radius in
+- **Purity history** (managers): enter a location (or pick it on the map), a radius in
   kilometres (default 1 km, measured as great-circle distance) and a year, choose
   **Virus PPM** or **Contaminant PPM**, and press **Show**. The line chart shows the
   monthly average of the reports within the radius; months are calendar months in your
   computer's time zone, and months without reports have no point.
-- **Accounts** (administrators): every account with its type, name, e-mail and status.
+- **Accounts** (administrators): every account with its role, name, e-mail and status.
   **Ban** stops an account from logging in, **Unban** lifts the ban, **Delete** (after a
   confirmation) removes the account. Administrators cannot ban or delete their own
   account. Deleting an account keeps the reports it filed, still showing its id as the
   reporter, and its security log entries; the id becomes free again, so a new account
   could later register the same id.
-- **Security Log** (administrators): the newest 1000 security events, newest first;
+- **Security log** (administrators): the newest 1000 security events, newest first;
   see [Security log](#security-log).
+- **Profile** (user menu): change your name, e-mail, phone and address; the account type
+  and username cannot be changed.
 
 ### Map and network
 
@@ -278,8 +289,9 @@ can be recorded.
 
 ```
 pom.xml                         Maven build (Java 17, OpenJFX, AtlantaFX, Ikonli, JUnit 5)
-src/main/java/fxapp/            Application entry point (fxapp.Main) and scene navigation
-src/main/java/controller/       JavaFX controllers, one per screen; LeafletMap drives the map page
+src/main/java/fxapp/            Application entry point (fxapp.Main), navigation and theme (Theme)
+src/main/java/controller/       JavaFX controllers, one per screen; ShellController is the sidebar
+                                frame of the signed-in pages, LeafletMap drives the map page
 src/main/java/fxapp/AppContext  Builds the services and opens the database (composition root)
 src/main/java/model/            Accounts, roles/permissions, validation, water source and
                                 purity reports, coordinates and distances (GeoPoint)
