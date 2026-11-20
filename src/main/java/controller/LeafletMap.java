@@ -1,9 +1,12 @@
 package controller;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.InvalidationListener;
 import javafx.concurrent.Worker;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import javafx.util.Duration;
 import model.GeoPoint;
 import model.map.MapMarker;
 import model.map.MarkerJson;
@@ -44,6 +47,7 @@ public final class LeafletMap {
     public static final String PAGE = "/web/map.html";
     /** Added to the WebView's user agent so tile servers can identify the app. */
     static final String USER_AGENT_SUFFIX = " CleanWaterCrowdsourcing/0.1 (JavaFX desktop app)";
+    private static final Duration RESIZE_DEBOUNCE = Duration.millis(120);
 
     /** Receives events from the map, on the FX thread. */
     public interface Listener {
@@ -75,6 +79,8 @@ public final class LeafletMap {
     private final Map<String, Consumer<JSObject>> state = new LinkedHashMap<>();
     private JSObject api;
     private boolean unavailable;
+    /** Tells Leaflet about a new view size once the size has stopped changing for a moment. */
+    private final PauseTransition resizeDebounce = new PauseTransition(RESIZE_DEBOUNCE);
 
     /**
      * Starts loading the map page into the view.
@@ -107,6 +113,16 @@ public final class LeafletMap {
                 leftBundledPage(location);
             }
         });
+        // Leaflet tracks window resizes itself; this is a second, explicit nudge after the
+        // view has been resized, so the map always matches the view.
+        resizeDebounce.setOnFinished(event -> invalidateSize());
+        InvalidationListener resized = observable -> {
+            if (api != null) {
+                resizeDebounce.playFromStart();
+            }
+        };
+        view.widthProperty().addListener(resized);
+        view.heightProperty().addListener(resized);
         if (pageUrl == null) {
             LOGGER.log(Level.WARNING, "Map page {0} is missing", PAGE);
             giveUp();
@@ -169,6 +185,7 @@ public final class LeafletMap {
         List<Consumer<JSObject>> calls = List.copyOf(pending);
         pending.clear();
         calls.forEach(call -> call.accept(api));
+        resizeDebounce.playFromStart();
     }
 
     private void giveUp() {
@@ -217,6 +234,13 @@ public final class LeafletMap {
      */
     public void focusMarker(String kind, int id) {
         call(null, "focusMarker", kind, id);
+    }
+
+    /**
+     * Makes the map re-read the size of its view (it keeps its centre).
+     */
+    private void invalidateSize() {
+        call(null, "invalidateSize");
     }
 
     /**

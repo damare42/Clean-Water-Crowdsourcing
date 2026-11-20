@@ -11,10 +11,12 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.stage.Modality;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import model.Account;
 import model.GeoPoint;
@@ -54,8 +56,12 @@ public class Main extends Application {
     private Account loggedAccount;
     /** Runs slow work (password hashing) off the FX thread, one job at a time. */
     private ExecutorService background;
-    private final double MINIMUM_WINDOW_WIDTH = 800.0;
-    private final double MINIMUM_WINDOW_HEIGHT = 600.0;
+    private static final double MINIMUM_WINDOW_WIDTH = 960.0;
+    private static final double MINIMUM_WINDOW_HEIGHT = 640.0;
+    private static final double INITIAL_WINDOW_WIDTH = 1280.0;
+    private static final double INITIAL_WINDOW_HEIGHT = 800.0;
+    /** The window never starts larger than this share of the screen. */
+    private static final double MAXIMUM_SCREEN_SHARE = 0.9;
 
     @Override
     public void start(Stage primaryStage) {
@@ -71,8 +77,9 @@ public class Main extends Application {
         try {
             stage = primaryStage;
             stage.setTitle("CWC");
-            stage.setMinWidth(MINIMUM_WINDOW_WIDTH);
-            stage.setMinHeight(MINIMUM_WINDOW_HEIGHT);
+            Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+            stage.setMinWidth(Math.min(MINIMUM_WINDOW_WIDTH, screen.getWidth()));
+            stage.setMinHeight(Math.min(MINIMUM_WINDOW_HEIGHT, screen.getHeight()));
             gotoWelcome();
             primaryStage.show();
         } catch (Exception ex) {
@@ -360,9 +367,22 @@ public class Main extends Application {
      */
     private <C> C replaceSceneContent(String fxml) throws IOException {
         FXMLLoader loader = load(fxml);
-        Scene scene = new Scene(loader.getRoot(), MINIMUM_WINDOW_WIDTH, MINIMUM_WINDOW_HEIGHT);
-        stage.setScene(scene);
-        stage.sizeToScene();
+        Parent root = loader.getRoot();
+        Scene scene = stage.getScene();
+        if (scene == null) {
+            // One scene for the whole session: pages only replace its root, so the window
+            // keeps the size (and maximised state) the user gave it.
+            Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+            double width = Math.min(INITIAL_WINDOW_WIDTH, screen.getWidth() * MAXIMUM_SCREEN_SHARE);
+            double height = Math.min(INITIAL_WINDOW_HEIGHT, screen.getHeight() * MAXIMUM_SCREEN_SHARE);
+            stage.setScene(new Scene(root, width, height));
+        } else {
+            scene.setRoot(root);
+            // Style and lay the page out now rather than on the next pulse, so it is
+            // complete (tables have their cells) as soon as navigation returns.
+            root.applyCss();
+            root.layout();
+        }
         return loader.getController();
     }
 

@@ -15,6 +15,8 @@
         receives user data as HTML (only JSON shown with textContent), pop-ups are blocked,
         any navigation away from this page is reverted, and the Java bridge is only given
         to this exact page.
+        map-config.js is a bundled script like the others (it only sets L_DISABLE_3D before
+        Leaflet loads), so it needs no change to this policy.
     -->
     <meta http-equiv="Content-Security-Policy"
           content="connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
@@ -24,6 +26,7 @@
 </head>
 <body>
 <div id="map"></div>
+<script src="map-config.js"></script>
 <script src="leaflet/leaflet.js"></script>
 <script src="map.js"></script>
 </body>

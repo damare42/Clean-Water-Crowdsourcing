@@ -24,6 +24,7 @@
         setMarkers: noop,
         focusMarker: noop,
         enablePicking: noop,
+        invalidateSize: noop,
         markerCount: function () {
             return 0;
         }
@@ -46,8 +47,40 @@
     }
 
     L.Icon.Default.imagePath = 'leaflet/images/';
-    var map = L.map('map', {worldCopyJump: true}).setView([20, 0], 2);
-    L.tileLayer(TILE_URL, {maxZoom: 19, attribution: ATTRIBUTION}).addTo(map);
+    // Animations off: JavaFX's WebKit does not reliably repaint animated zooms and fades
+    // (see map-config.js), and they add nothing to a desktop map.
+    var map = L.map('map', {
+        worldCopyJump: true,
+        fadeAnimation: false,
+        zoomAnimation: false,
+        markerZoomAnimation: false,
+        minZoom: 2
+    }).setView([20, 0], 2);
+    var tiles = L.tileLayer(TILE_URL, {maxZoom: 19, attribution: ATTRIBUTION}).addTo(map);
+
+    // Without a network connection no tile ever loads: say so instead of a silent grey map.
+    var tilesLoaded = 0;
+    var offlineNotice = L.control({position: 'topright'});
+    offlineNotice.onAdd = function () {
+        var box = L.DomUtil.create('div', 'cwc-offline');
+        box.setAttribute('role', 'status');
+        box.textContent = 'Map tiles unavailable \u2013 check your internet connection';
+        return box;
+    };
+    var offlineShown = false;
+    tiles.on('tileload', function () {
+        tilesLoaded++;
+        if (offlineShown) {
+            offlineNotice.remove();
+            offlineShown = false;
+        }
+    });
+    tiles.on('tileerror', function () {
+        if (tilesLoaded === 0 && !offlineShown) {
+            offlineNotice.addTo(map);
+            offlineShown = true;
+        }
+    });
 
     var markerLayer = L.layerGroup().addTo(map);
     var markersByKey = {};
@@ -185,6 +218,10 @@
         setMarkers: setMarkers,
         focusMarker: focusMarker,
         enablePicking: enablePicking,
+        invalidateSize: function () {
+            map.invalidateSize({pan: false});
+            return true;
+        },
         markerCount: function () {
             return Object.keys(markersByKey).length;
         }

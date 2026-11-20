@@ -63,3 +63,13 @@ html, body, #map {
     border-radius: 50%;
     box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
 }
+
+.cwc-offline {
+    background: #fff8c5;
+    color: #9a6700;
+    border: 1px solid #d4a72c;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font: 12px sans-serif;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
