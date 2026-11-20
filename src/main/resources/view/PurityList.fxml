@@ -52,13 +52,13 @@
          </placeholder>
          <columns>
                   <TableColumn fx:id="numberColumn" minWidth="40" prefWidth="40" styleClass="numeric" text="#" />
-                  <TableColumn fx:id="dateColumn" minWidth="90" prefWidth="90" text="Date" />
+                  <TableColumn fx:id="dateColumn" minWidth="88" prefWidth="88" text="Date" />
                   <TableColumn fx:id="timeColumn" minWidth="52" prefWidth="52" text="Time" />
-                  <TableColumn fx:id="reporterColumn" minWidth="76" prefWidth="76" text="Reporter" />
-                  <TableColumn fx:id="conditionColumn" minWidth="92" prefWidth="92" text="Condition" />
+                  <TableColumn fx:id="reporterColumn" minWidth="80" prefWidth="80" text="Reporter" />
+                  <TableColumn fx:id="conditionColumn" minWidth="90" prefWidth="90" text="Condition" />
                   <TableColumn fx:id="virusColumn" minWidth="88" prefWidth="88" styleClass="numeric" text="Virus PPM" />
-                  <TableColumn fx:id="contaminantColumn" minWidth="132" prefWidth="132" styleClass="numeric" text="Contaminant PPM" />
-                  <TableColumn fx:id="latitudeColumn" minWidth="72" prefWidth="72" styleClass="numeric" text="Latitude" />
+                  <TableColumn fx:id="contaminantColumn" minWidth="104" prefWidth="104" styleClass="numeric" text="Contam. PPM" />
+                  <TableColumn fx:id="latitudeColumn" minWidth="76" prefWidth="76" styleClass="numeric" text="Latitude" />
                   <TableColumn fx:id="longitudeColumn" minWidth="86" prefWidth="86" styleClass="numeric" text="Longitude" />
          </columns>
       </TableView>

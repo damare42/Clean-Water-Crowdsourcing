@@ -803,8 +803,6 @@
 
 .table-view > .column-header-background .column-header .label {
     -fx-padding: 0 6px 0 6px;
-    /* A narrow column wraps its header onto two lines instead of cutting it off. */
-    -fx-wrap-text: true;
 }
 
 .table-view {

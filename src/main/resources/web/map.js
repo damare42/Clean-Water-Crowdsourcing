@@ -59,8 +59,10 @@
     var tiles = L.tileLayer(TILE_URL, {maxZoom: 19, attribution: ATTRIBUTION}).addTo(map);
 
     // Without a network connection no tile ever loads: say so instead of a silent grey map.
+    // Bottom left (above the legend): the top of the map holds the zoom buttons and the
+    // app's floating report buttons, the bottom right the attribution.
     var tilesLoaded = 0;
-    var offlineNotice = L.control({position: 'topright'});
+    var offlineNotice = L.control({position: 'bottomleft'});
     offlineNotice.onAdd = function () {
         var box = L.DomUtil.create('div', 'cwc-offline');
         box.setAttribute('role', 'status');

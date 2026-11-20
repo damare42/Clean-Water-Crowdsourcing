@@ -7,6 +7,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Tooltip;
 
 import java.util.function.Function;
 
@@ -29,12 +30,28 @@ final class Tables {
      * @param <T>    the cell value type
      */
     static <S, T> void column(TableColumn<S, T> column, Function<S, T> value, Function<T, String> format) {
+        column(column, value, format, false);
+    }
+
+    /**
+     * Like {@link #column(TableColumn, Function, Function)}; with {@code tooltip} each
+     * cell also shows its full text as a tooltip, for a column that may cut text off.
+     */
+    static <S, T> void column(TableColumn<S, T> column, Function<S, T> value, Function<T, String> format,
+                              boolean tooltip) {
         column.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(value.apply(cell.getValue())));
         column.setCellFactory(c -> new TableCell<>() {
+            private final Tooltip tip = new Tooltip();
+
             @Override
             protected void updateItem(T item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null : format.apply(item));
+                String text = empty || item == null ? null : format.apply(item);
+                setText(text);
+                if (tooltip) {
+                    tip.setText(text);
+                    setTooltip(text == null || text.isEmpty() ? null : tip);
+                }
             }
         });
     }

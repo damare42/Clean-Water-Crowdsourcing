@@ -1,10 +1,10 @@
 package controller;
 
 import fxapp.Main;
+import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
@@ -85,22 +85,26 @@ public class AppViewController implements Initializable, Page {
     public void initialize(URL location, ResourceBundle resources) {
         // Start with the list hidden in a narrow window, and follow the window across the
         // threshold afterwards (the user can still open or close it at any width).
+        // The scene lives for the whole session: the listener is removed again when the
+        // page leaves it, so a page that was navigated away from can be collected.
         mapPage.sceneProperty().addListener((observable, old, scene) -> {
+            if (old != null) {
+                old.widthProperty().removeListener(windowWidthListener);
+            }
             if (scene != null) {
-                watchWidth(scene);
+                setPanelShown(scene.getWidth() >= PANEL_MIN_WINDOW_WIDTH);
+                scene.widthProperty().addListener(windowWidthListener);
             }
         });
     }
 
-    private void watchWidth(Scene scene) {
-        setPanelShown(scene.getWidth() >= PANEL_MIN_WINDOW_WIDTH);
-        scene.widthProperty().addListener((observable, old, width) -> {
-            boolean wide = width.doubleValue() >= PANEL_MIN_WINDOW_WIDTH;
-            if (wide != old.doubleValue() >= PANEL_MIN_WINDOW_WIDTH) {
-                setPanelShown(wide);
-            }
-        });
-    }
+    /** Shows or hides the report list when the window crosses {@link #PANEL_MIN_WINDOW_WIDTH}. */
+    private final ChangeListener<Number> windowWidthListener = (observable, old, width) -> {
+        boolean wide = width.doubleValue() >= PANEL_MIN_WINDOW_WIDTH;
+        if (wide != old.doubleValue() >= PANEL_MIN_WINDOW_WIDTH) {
+            setPanelShown(wide);
+        }
+    };
 
     private void setPanelShown(boolean shown) {
         reportPanel.setVisible(shown);
@@ -210,19 +214,27 @@ public class AppViewController implements Initializable, Page {
         Label badge = Badges.badge(condition.toString(), Badges.styleOf(condition));
         HBox top = new HBox(8, icon, title);
         top.setAlignment(Pos.CENTER_LEFT);
-        String detail = purity
-                ? "Virus " + WaterPurityReport.formatPpm(((WaterPurityReport) report).getVirusPpm())
-                + " ppm \u00b7 Contaminant "
-                + WaterPurityReport.formatPpm(((WaterPurityReport) report).getContaminantPpm()) + " ppm"
-                : ((WaterSourceReport) report).getType().toString();
-        Label what = new Label(detail);
-        what.getStyleClass().add("report-detail");
+        // One short line per value, so nothing has to be cut off in the narrow panel.
+        List<String> details = purity
+                ? List.of("Virus " + WaterPurityReport.formatPpm(((WaterPurityReport) report).getVirusPpm()) + " ppm",
+                        "Contaminant " + WaterPurityReport.formatPpm(((WaterPurityReport) report).getContaminantPpm())
+                                + " ppm")
+                : List.of(((WaterSourceReport) report).getType().toString());
+        String detail = String.join(", ", details);
+        VBox what = new VBox(2);
+        for (String line : details) {
+            Label label = new Label(line);
+            label.getStyleClass().add("report-detail");
+            label.setWrapText(true);
+            label.setMinWidth(0);
+            label.setMinHeight(Region.USE_PREF_SIZE);
+            what.getChildren().add(label);
+        }
         what.setMinWidth(0);
-        what.setWrapText(true);
         what.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(what, Priority.ALWAYS);
         HBox middle = new HBox(8, what, badge);
-        middle.setAlignment(Pos.CENTER_LEFT);
+        middle.setAlignment(Pos.TOP_LEFT);
         Label when = new Label(WaterSourceReport.DATE_FORMAT.format(report.getReportedAt().atZone(zone))
                 + " " + WaterSourceReport.TIME_FORMAT.format(report.getReportedAt().atZone(zone))
                 + " \u00b7 " + report.getReporter());

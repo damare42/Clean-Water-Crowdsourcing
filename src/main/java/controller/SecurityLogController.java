@@ -58,7 +58,7 @@ public class SecurityLogController implements Initializable, Page {
         typeColumn.setComparator(Comparator.comparing(SecurityEventType::label));
         Tables.column(actorColumn, SecurityEvent::actor, Function.identity());
         Tables.column(subjectColumn, SecurityEvent::subject, Function.identity());
-        Tables.column(detailColumn, SecurityEvent::detail, Function.identity());
+        Tables.column(detailColumn, SecurityEvent::detail, Function.identity(), true);
         Tables.style(eventTable);
     }
 

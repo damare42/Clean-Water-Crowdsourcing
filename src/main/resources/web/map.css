@@ -145,6 +145,8 @@ html, body, #map {
 
 /* Shown while no map tile could be loaded */
 .cwc-offline {
+    max-width: 260px;
+    white-space: normal;
     background: #fff8c5;
     color: #7d4e00;
     border: 1px solid #d4a72c;
