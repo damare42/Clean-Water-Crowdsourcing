@@ -48,6 +48,9 @@ public final class LeafletMap {
     /** Added to the WebView's user agent so tile servers can identify the app. */
     static final String USER_AGENT_SUFFIX = " CleanWaterCrowdsourcing/0.1 (JavaFX desktop app)";
     private static final Duration RESIZE_DEBOUNCE = Duration.millis(120);
+    private static final String SET_USER_LOCATION = "setUserLocation";
+    /** State key of the location drawn by {@link #showUserLocation}. */
+    private static final String USER_LOCATION = "userLocation";
 
     /** Receives events from the map, on the FX thread. */
     public interface Listener {
@@ -201,13 +204,15 @@ public final class LeafletMap {
      *                 be replayed if the page is reloaded
      */
     private void call(String stateKey, String function, Object... args) {
-        Consumer<JSObject> call = target -> {
-            try {
-                target.call(function, args);
-            } catch (JSException e) {
-                LOGGER.log(Level.WARNING, "Map call " + function + " failed", e);
-            }
-        };
+        call(stateKey, invocation(function, args));
+    }
+
+    /**
+     * Runs a call against the page's API now, or once the page has loaded.
+     *
+     * @param stateKey as for {@link #call(String, String, Object...)}
+     */
+    private void call(String stateKey, Consumer<JSObject> call) {
         if (stateKey != null) {
             state.put(stateKey, call);
         }
@@ -216,6 +221,17 @@ public final class LeafletMap {
         } else if (!unavailable) {
             pending.add(call);
         }
+    }
+
+    /** A call of one function of the page's API; a failure is logged, not thrown. */
+    private static Consumer<JSObject> invocation(String function, Object... args) {
+        return target -> {
+            try {
+                target.call(function, args);
+            } catch (JSException e) {
+                LOGGER.log(Level.WARNING, "Map call " + function + " failed", e);
+            }
+        };
     }
 
     /**
@@ -255,23 +271,60 @@ public final class LeafletMap {
     /**
      * Draws the approximate location of this computer (a dot and an accuracy circle, in
      * a layer of their own: they are not report markers) and maybe centres the map on it.
-     * If the page has to be reloaded, the location is drawn again without forcing a
-     * recentre.
+     * <p>
+     * If the page has to be reloaded, the location is drawn again. It only recentres the
+     * reloaded map if this call never reached the page (and was not {@link Recenter#FORCE}):
+     * once it has been applied, the map either was centred on the location already or the
+     * user had moved it, so the replay only draws ({@link Recenter#NONE}).
      *
      * @param json the location as written by {@link model.map.LocationJson}
      * @param recenter whether to centre the map on it
      */
     public void showUserLocation(String json, Recenter recenter) {
-        state.put("userLocation", replayable("setUserLocation", json,
-                recenter == Recenter.FORCE ? Recenter.AUTO.word : recenter.word));
-        call(null, "setUserLocation", json, recenter.word);
+        Consumer<JSObject> drawOnly = invocation(SET_USER_LOCATION, json, Recenter.NONE.word);
+        // Replayed after a reload until applied once; from then on only drawn.
+        UserLocationCall replay = new UserLocationCall(json,
+                recenter == Recenter.FORCE ? Recenter.AUTO : recenter, drawOnly);
+        replay.replayEntry = replay;
+        state.put(USER_LOCATION, replay);
+        UserLocationCall live = recenter == Recenter.FORCE
+                ? new UserLocationCall(json, recenter, drawOnly) : replay;
+        live.replayEntry = replay;
+        call(null, live);
+    }
+
+    /**
+     * Calls {@code setUserLocation} with a recentre mode; once that has reached the page,
+     * the location's replay entry (if it is still the current one) is replaced by a call
+     * that only draws.
+     */
+    private final class UserLocationCall implements Consumer<JSObject> {
+        private final Consumer<JSObject> invocation;
+        private final boolean mayRecenter;
+        private final Consumer<JSObject> drawOnly;
+        /** The replay entry this call belongs to. */
+        private Consumer<JSObject> replayEntry;
+
+        UserLocationCall(String json, Recenter recenter, Consumer<JSObject> drawOnly) {
+            this.invocation = invocation(SET_USER_LOCATION, json, recenter.word);
+            this.mayRecenter = recenter != Recenter.NONE;
+            this.drawOnly = drawOnly;
+        }
+
+        @Override
+        public void accept(JSObject target) {
+            invocation.accept(target);
+            if (mayRecenter) {
+                state.replace(USER_LOCATION, replayEntry, drawOnly);
+            }
+        }
     }
 
     /**
      * Removes the location drawn by {@link #showUserLocation}.
      */
     public void clearUserLocation() {
-        state.remove("userLocation");
+        state.remove(USER_LOCATION);
         call(null, "clearUserLocation");
     }
 
@@ -280,16 +333,6 @@ public final class LeafletMap {
      */
     public void fitAll() {
         call(null, "fitAll");
-    }
-
-    private Consumer<JSObject> replayable(String function, Object... args) {
-        return target -> {
-            try {
-                target.call(function, args);
-            } catch (JSException e) {
-                LOGGER.log(Level.WARNING, "Map call " + function + " failed", e);
-            }
-        };
     }
 
     /**

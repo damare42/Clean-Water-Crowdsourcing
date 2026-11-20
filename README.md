@@ -24,12 +24,17 @@ freely (down to 960x640) and keeps its size when you move between pages.
   at the bottom right says where it came from. **Locate me** looks it up again and
   centres the map on it; **All reports** zooms out to show every report. Every water
   source report is a pin on an OpenStreetMap map. Workers and
-  managers also see water purity reports, drawn as round teal markers (a legend explains
-  the two kinds). Click a marker to see its fields; **Details** in the popup opens the
-  full report. The **Reports** panel on the right lists the same reports as cards, newest
-  first: click a card to centre the map on it, double-click it (or press ENTER) for the
-  details. The panel starts hidden in narrow windows; **Reports** on the map shows it.
-  **Report water source** and **Report purity** on the map open the forms.
+  managers also see water purity reports, drawn as round dots. Pins and dots are coloured
+  by the report's condition: green for Potable or Safe, teal for Clear, amber for Muddy or
+  Treatable, red for Waste or Unsafe (the legend at the bottom left explains the shapes
+  and colours). Click a marker to see its fields; **Details** in the popup opens the
+  full report. The **Reports** panel on the right lists the same reports as cards: nearest
+  first once the approximate location is known, each card saying how far away the report
+  is (for example "3.2 km away", measured from that rough location); newest first while
+  no location is known or it is switched off. Click a card to centre the map on it,
+  double-click it (or press ENTER) for the details. The panel starts hidden in narrow
+  windows; **Reports** on the map shows it. **Report water source** and **Report purity**
+  on the map open the forms.
 - **Report water source**: type the latitude and longitude, or press **Pick on map** and
   click the spot; the chosen point fills both fields (up to 6 decimal places). Choose the
   type and condition and press **Submit report** (or ENTER); **Cancel** (or ESC) goes back
@@ -56,8 +61,9 @@ freely (down to 960x640) and keeps its size when you move between pages.
   account. Deleting an account keeps the reports it filed, still showing its id as the
   reporter, and its security log entries; the id becomes free again, so a new account
   could later register the same id.
-- **Security log** (administrators): the newest 1000 security events, newest first;
-  see [Security log](#security-log).
+- **Security log** (administrators): the newest 1000 security events, newest first
+  (long details wrap onto more lines; the full text is also in the cell's tooltip); see
+  [Security log](#security-log).
 - **Profile** (user menu): change your name, e-mail, phone and address; the account type
   and username cannot be changed. Its **Privacy** section sets how this computer's
   approximate location is found (see [Privacy](#privacy)).

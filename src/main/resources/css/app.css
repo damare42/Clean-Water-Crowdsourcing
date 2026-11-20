@@ -666,6 +666,19 @@
     -fx-text-fill: -cwc-text-muted;
 }
 
+/* Distance from the approximate location (only when it is known) */
+.report-card .report-distance {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cwc-brand-700;
+    -fx-graphic-text-gap: 4px;
+}
+
+.report-card .report-distance-icon {
+    -fx-icon-color: -cwc-brand-700;
+    -fx-icon-size: 13px;
+}
+
 /* --------------------------------------------------------- empty states */
 .empty-state {
     -fx-alignment: center;

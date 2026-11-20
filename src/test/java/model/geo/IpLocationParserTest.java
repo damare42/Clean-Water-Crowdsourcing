@@ -122,4 +122,72 @@ class IpLocationParserTest {
         assertEquals("", IpLocationParser.sanitizeLabel(null));
         assertEquals("x".repeat(80), IpLocationParser.sanitizeLabel("x".repeat(500)));
     }
+
+    @Test
+    void stackedCombiningMarksAreBounded() {
+        // "Zalgo" text: dozens of marks piled on each letter.
+        String zalgo = "Z" + "\u0301\u0300\u0308\u0336\u035c\u0489".repeat(10)
+                + "a" + "\u0903".repeat(30) + "l" + "\u20dd".repeat(30);
+        String clean = IpLocationParser.sanitizeLabel(zalgo);
+
+        assertEquals("Z\u0301\u0300\u0308a" + "\u0903".repeat(30) + "l\u20dd\u20dd\u20dd", clean);
+        assertTrue(maxMarksInARow(clean) <= IpLocationParser.MAX_COMBINING_MARKS, clean);
+    }
+
+    @Test
+    void marksWithoutABaseAreBoundedToo() {
+        assertEquals("\u0301\u0301\u0301 x", IpLocationParser.sanitizeLabel("\u0301".repeat(40) + " x"));
+        assertEquals("a \u0301\u0301\u0301", IpLocationParser.sanitizeLabel("a " + "\u0301".repeat(40)));
+    }
+
+    @Test
+    void zalgoInAResponseIsBounded() {
+        String body = "{\"latitude\":40.7128,\"longitude\":-74.006,\"city\":\"N" + "\\u0336".repeat(200)
+                + "ew York\"}";
+        String label = IpLocationParser.parse(body, NOW).orElseThrow().placeLabel();
+        assertEquals("N\u0336\u0336\u0336ew York", label);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "S\u00e3o Paulo",            // precomposed
+            "Sa\u0303o Paulo",           // decomposed: a + combining tilde
+            "Z\u00fcrich",
+            "Zu\u0308rich",
+            "H\u00e0 N\u1ed9i",          // precomposed
+            "Ha\u0300 No\u0323\u0302i",  // decomposed: o + dot below + circumflex (two marks)
+            "\u0928\u0908 \u0926\u093f\u0932\u094d\u0932\u0940", // Devanagari, with spacing marks
+            "M\u00fcnchen, Bayern, Deutschland",
+            "\u1019\u103c\u102d\u102f\u1037",  // Burmese "city": spacing mark + three stacking marks
+            "\u1000\u103c\u102e\u1038",         // Burmese, ends with a visarga (spacing mark)
+            "\u091c\u093c\u094b\u0902",         // Hindi: nukta, vowel sign O (spacing), anusvara
+    })
+    void realPlaceNamesAreUnchanged(String name) {
+        assertEquals(name, IpLocationParser.sanitizeLabel(name));
+    }
+
+    @Test
+    void hangulFillersCannotResetTheMarkCount() {
+        String attack = ("Z" + "\u0301".repeat(3) + "\u3164" + "\u0301".repeat(3) + "\uffa0"
+                + "\u0301".repeat(3) + "\u115f\u1160" + "\u0301".repeat(3));
+        String clean = IpLocationParser.sanitizeLabel(attack);
+
+        assertEquals("Z\u0301\u0301\u0301", clean);
+    }
+
+    private static int maxMarksInARow(String text) {
+        int max = 0;
+        int run = 0;
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            i += Character.charCount(cp);
+            int type = Character.getType(cp);
+            if (type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK) {
+                max = Math.max(max, ++run);
+            } else if (type != Character.COMBINING_SPACING_MARK) {
+                run = 0;
+            }
+        }
+        return max;
+    }
 }

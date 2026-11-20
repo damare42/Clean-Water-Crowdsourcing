@@ -58,7 +58,8 @@ public class SecurityLogController implements Initializable, Page {
         typeColumn.setComparator(Comparator.comparing(SecurityEventType::label));
         Tables.column(actorColumn, SecurityEvent::actor, Function.identity());
         Tables.column(subjectColumn, SecurityEvent::subject, Function.identity());
-        Tables.column(detailColumn, SecurityEvent::detail, Function.identity(), true);
+        // Details can be long: they wrap (the row grows) rather than being cut off.
+        Tables.wrappingColumn(detailColumn, SecurityEvent::detail, Function.identity());
         Tables.style(eventTable);
     }
 
