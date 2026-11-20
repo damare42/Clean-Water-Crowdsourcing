@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.chart.CategoryAxis?>
 <?import javafx.scene.chart.LineChart?>
 <?import javafx.scene.chart.NumberAxis?>
@@ -8,48 +7,72 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.PurityHistoryController">
+<VBox styleClass="page" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.PurityHistoryController">
    <children>
-      <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-         <top>
-            <VBox spacing="8.0" BorderPane.alignment="CENTER">
+      <VBox spacing="4.0">
+         <children>
+            <Label styleClass="page-title" text="Purity history" />
+            <Label styleClass="page-subtitle" text="Monthly average virus or contaminant levels of the purity reports around a location." wrapText="true" />
+         </children>
+      </VBox>
+      <VBox styleClass="card">
+         <children>
+            <FlowPane alignment="BOTTOM_LEFT" columnHalignment="LEFT" styleClass="filter-grid">
                <children>
-                  <Label text="Purity History" />
-                  <FlowPane alignment="CENTER_LEFT" hgap="8.0" vgap="6.0">
+                  <VBox styleClass="field">
                      <children>
-                        <Label text="Latitude" />
-                        <TextField fx:id="latitude" prefColumnCount="9" />
-                        <Label text="Longitude" />
-                        <TextField fx:id="longitude" prefColumnCount="9" />
-                        <Button fx:id="pickOnMap" mnemonicParsing="false" onAction="#pickOnMapPressed" text="Pick on map" />
-                        <Label text="Radius (km)" />
-                        <TextField fx:id="radius" prefColumnCount="5" text="1" />
+                        <Label styleClass="field-label" text="Latitude" />
+                        <TextField fx:id="latitude" accessibleText="Latitude" prefColumnCount="8" promptText="e.g. 33.749" />
                      </children>
-                  </FlowPane>
-                  <FlowPane alignment="CENTER_LEFT" hgap="8.0" vgap="6.0">
+                  </VBox>
+                  <VBox styleClass="field">
                      <children>
-                        <Label text="Year" />
-                        <TextField fx:id="year" prefColumnCount="5" />
-                        <Label text="Show" />
-                        <ComboBox fx:id="metric" prefWidth="160.0" />
-                        <Button fx:id="showButton" defaultButton="true" mnemonicParsing="false" onAction="#showPressed" text="Show" />
+                        <Label styleClass="field-label" text="Longitude" />
+                        <TextField fx:id="longitude" accessibleText="Longitude" prefColumnCount="8" promptText="e.g. -84.388" />
                      </children>
-                  </FlowPane>
-                  <Label fx:id="message" wrapText="true" />
+                  </VBox>
+                  <Button fx:id="pickOnMap" mnemonicParsing="false" onAction="#pickOnMapPressed" text="Pick on map">
+                     <graphic><FontIcon iconLiteral="mdomz-my_location" /></graphic>
+                     <tooltip><Tooltip text="Choose the location on a map" /></tooltip>
+                  </Button>
+                  <VBox styleClass="field">
+                     <children>
+                        <Label styleClass="field-label" text="Radius (km)" />
+                        <TextField fx:id="radius" accessibleText="Radius in kilometres" prefColumnCount="4" text="1" />
+                     </children>
+                  </VBox>
+                  <VBox styleClass="field">
+                     <children>
+                        <Label styleClass="field-label" text="Year" />
+                        <TextField fx:id="year" accessibleText="Year" prefColumnCount="4" />
+                     </children>
+                  </VBox>
+                  <VBox styleClass="field">
+                     <children>
+                        <Label styleClass="field-label" text="Metric" />
+                        <ComboBox fx:id="metric" accessibleText="Metric" prefWidth="150.0" />
+                     </children>
+                  </VBox>
+                  <Button fx:id="showButton" defaultButton="true" mnemonicParsing="false" onAction="#showPressed" styleClass="accent" text="Show">
+                     <graphic><FontIcon iconLiteral="mdoal-bar_chart" /></graphic>
+                  </Button>
                </children>
-               <padding>
-                  <Insets left="10.0" right="10.0" top="10.0" />
-               </padding>
-            </VBox>
-         </top>
-         <center>
-            <LineChart fx:id="chart" animated="false" legendVisible="false" title="Monthly average" BorderPane.alignment="CENTER">
+            </FlowPane>
+         </children>
+      </VBox>
+      <Label fx:id="message" managed="false" maxWidth="Infinity" styleClass="banner, banner-info" visible="false" wrapText="true">
+         <graphic><FontIcon iconLiteral="mdoal-info" /></graphic>
+      </Label>
+      <StackPane styleClass="card" VBox.vgrow="ALWAYS">
+         <children>
+            <LineChart fx:id="chart" animated="false" legendVisible="false" minHeight="200.0" styleClass="history-chart" title="Monthly average">
                <xAxis>
                   <CategoryAxis fx:id="monthAxis" label="Month" side="BOTTOM" />
                </xAxis>
@@ -57,17 +80,14 @@
                   <NumberAxis fx:id="ppmAxis" label="PPM" side="LEFT" />
                </yAxis>
             </LineChart>
-         </center>
-         <bottom>
-            <HBox alignment="CENTER" BorderPane.alignment="CENTER">
+            <VBox fx:id="emptyChart" maxHeight="-Infinity" maxWidth="360.0" mouseTransparent="true" styleClass="empty-state">
                <children>
-                  <Button fx:id="back" cancelButton="true" mnemonicParsing="false" onAction="#backPressed" text="Back" />
+                  <FontIcon iconLiteral="mdoal-insights" styleClass="empty-icon" />
+                  <Label fx:id="emptyTitle" styleClass="empty-title" text="No chart yet" />
+                  <Label fx:id="emptyText" styleClass="empty-text" text="Choose a location, a radius and a year, then press Show." wrapText="true" />
                </children>
-               <padding>
-                  <Insets bottom="10.0" top="6.0" />
-               </padding>
-            </HBox>
-         </bottom>
-      </BorderPane>
+            </VBox>
+         </children>
+      </StackPane>
    </children>
-</AnchorPane>
+</VBox>

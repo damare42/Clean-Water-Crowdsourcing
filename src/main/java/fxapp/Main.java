@@ -3,18 +3,20 @@ package fxapp;
 
 import controller.AppViewController;
 import controller.CreateAdminController;
-import controller.LoginController;
 import controller.MapPickerController;
 import controller.Page;
 import controller.ReportDetailsController;
+import controller.ShellController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.stage.Modality;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import model.Account;
 import model.GeoPoint;
@@ -48,17 +50,41 @@ public class Main extends Application {
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
     /** System property that asks for the first administrator to be created at start-up. */
     public static final String BOOTSTRAP_ADMIN_PROPERTY = "cwc.bootstrapAdmin";
+    /** Pages shown inside the signed-in shell (FXML resources). */
+    public static final String PAGE_MAP = "/view/appview.fxml";
+    public static final String PAGE_PROFILE = "/view/ProfilePage.fxml";
+    public static final String PAGE_SOURCE_REPORT = "/view/WaterSourceReport.fxml";
+    public static final String PAGE_SOURCE_LIST = "/view/WSRViewer.fxml";
+    public static final String PAGE_PURITY_REPORT = "/view/PurityReport.fxml";
+    public static final String PAGE_PURITY_LIST = "/view/PurityList.fxml";
+    public static final String PAGE_PURITY_HISTORY = "/view/PurityHistory.fxml";
+    public static final String PAGE_ACCOUNTS = "/view/AdminAccounts.fxml";
+    public static final String PAGE_SECURITY_LOG = "/view/SecurityLog.fxml";
+    private static final String SHELL = "/view/AppShell.fxml";
+    private static final String PAGE_WELCOME = "/view/WelcomePage.fxml";
+    private static final String PAGE_REGISTRATION = "/view/RegisterPage.fxml";
+    /** The main window's title. */
+    public static final String APP_TITLE = "Clean Water Crowdsourcing";
     /** the main container for the application window */
     private Stage stage;
     private AppContext context;
     private Account loggedAccount;
+    /** The sidebar frame of the signed-in pages; null while nobody is signed in. */
+    private ShellController shell;
     /** Runs slow work (password hashing) off the FX thread, one job at a time. */
     private ExecutorService background;
-    private final double MINIMUM_WINDOW_WIDTH = 800.0;
-    private final double MINIMUM_WINDOW_HEIGHT = 600.0;
+    private static final double MINIMUM_WINDOW_WIDTH = 960.0;
+    private static final double MINIMUM_WINDOW_HEIGHT = 640.0;
+    private static final double INITIAL_WINDOW_WIDTH = 1280.0;
+    private static final double INITIAL_WINDOW_HEIGHT = 800.0;
+    private static final double PICKER_MIN_WIDTH = 600.0;
+    private static final double PICKER_MIN_HEIGHT = 420.0;
+    /** The window never starts larger than this share of the screen. */
+    private static final double MAXIMUM_SCREEN_SHARE = 0.9;
 
     @Override
     public void start(Stage primaryStage) {
+        Theme.install();
         if (context == null && !openContext()) {
             Platform.exit();
             return;
@@ -70,9 +96,10 @@ public class Main extends Application {
         });
         try {
             stage = primaryStage;
-            stage.setTitle("CWC");
-            stage.setMinWidth(MINIMUM_WINDOW_WIDTH);
-            stage.setMinHeight(MINIMUM_WINDOW_HEIGHT);
+            stage.setTitle(APP_TITLE);
+            Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+            stage.setMinWidth(Math.min(MINIMUM_WINDOW_WIDTH, screen.getWidth()));
+            stage.setMinHeight(Math.min(MINIMUM_WINDOW_HEIGHT, screen.getHeight()));
             gotoWelcome();
             primaryStage.show();
         } catch (Exception ex) {
@@ -126,6 +153,7 @@ public class Main extends Application {
                         "The administrator account " + admin.getId() + " was created. You can log in now.");
                 done.setHeaderText("Administrator created");
                 done.initOwner(stage);
+                Theme.style(done);
                 done.show();
             });
             return controller.getCreated();
@@ -150,7 +178,8 @@ public class Main extends Application {
             LOGGER.log(Level.SEVERE, "Could not open the database" + where, e);
             Alert alert = new Alert(Alert.AlertType.ERROR,
                     "Could not open the database" + where + ".\n" + e.getMessage());
-            alert.setHeaderText("Clean Water Crowdsourcing cannot start");
+            alert.setHeaderText(APP_TITLE + " cannot start");
+            Theme.style(alert);
             alert.showAndWait();
             return false;
         }
@@ -207,13 +236,22 @@ public class Main extends Application {
     }
 
     /**
-     * Shows a full-window page and sets it up.
-     * @param fxml the page's FXML resource
+     * Shows a page inside the signed-in shell (sidebar and user menu) and sets it up.
+     * @param fxml the page's FXML resource, one of the {@code PAGE_*} names
      * @return the page's controller, or empty if the page could not be loaded
      */
     private <C extends Page> Optional<C> showPage(String fxml) {
         try {
-            C page = replaceSceneContent(fxml);
+            if (shell == null || shell.getAccount() != loggedAccount) {
+                FXMLLoader shellLoader = load(SHELL);
+                shell = shellLoader.getController();
+                shell.setUp(this, loggedAccount);
+                setSceneRoot(shellLoader.getRoot());
+            }
+            FXMLLoader loader = load(fxml);
+            shell.showPage(loader.getRoot(), fxml);
+            layOut(stage.getScene().getRoot());
+            C page = loader.getController();
             page.setApp(this);
             return Optional.of(page);
         } catch (IOException | RuntimeException ex) {
@@ -223,31 +261,66 @@ public class Main extends Application {
     }
 
     /**
+     * Shows a full-window page without the shell (welcome, registration) and sets it up.
+     * @param fxml the page's FXML resource
+     */
+    private void showStandalonePage(String fxml) {
+        try {
+            shell = null;
+            FXMLLoader loader = load(fxml);
+            setSceneRoot(loader.getRoot());
+            Page page = loader.getController();
+            page.setApp(this);
+        } catch (IOException | RuntimeException ex) {
+            LOGGER.log(Level.SEVERE, "Could not load page " + fxml, ex);
+        }
+    }
+
+    /**
+     * Updates the user menu after the signed-in account's profile changed.
+     */
+    public void accountChanged() {
+        if (shell != null) {
+            shell.showAccount(loggedAccount);
+        }
+    }
+
+    /**
+     * Shows a short confirmation ("toast") over the current signed-in page.
+     * @param message the text to show
+     */
+    public void showToast(String message) {
+        if (shell != null) {
+            shell.showToast(message);
+        }
+    }
+
+    /**
      * a method to send the app to the welcome screen
      */
     private void gotoWelcome() {
-        showPage("/view/WelcomePage.fxml");
+        showStandalonePage(PAGE_WELCOME);
     }
 
     /**
      * a method to send the app to the registration page
      */
     public void gotoRegistration() {
-        showPage("/view/RegisterPage.fxml");
+        showStandalonePage(PAGE_REGISTRATION);
     }
 
     /**
      * a method to send the app to the profile page
      */
     public void gotoProfile() {
-        showPage("/view/ProfilePage.fxml");
+        showPage(PAGE_PROFILE);
     }
 
     /**
      * a method to send the app to the map page
      */
     public void gotoApp() {
-        showPage("/view/appview.fxml");
+        showPage(PAGE_MAP);
     }
 
     /**
@@ -255,7 +328,7 @@ public class Main extends Application {
      * @param report the report to show
      */
     public void showOnMap(Report report) {
-        this.<AppViewController>showPage("/view/appview.fxml")
+        this.<AppViewController>showPage(PAGE_MAP)
                 .ifPresent(appView -> appView.focusReport(report));
     }
 
@@ -263,49 +336,49 @@ public class Main extends Application {
      * a method to direct the program to the water source creation page
      */
     public void gotoWaterSourceReport() {
-        showPage("/view/WaterSourceReport.fxml");
+        showPage(PAGE_SOURCE_REPORT);
     }
 
     /**
      * a method to send the application to the Water Source Report Viewer page
      */
     public void gotoWSRViewer() {
-        showPage("/view/WSRViewer.fxml");
+        showPage(PAGE_SOURCE_LIST);
     }
 
     /**
      * Shows the water purity report form.
      */
     public void gotoPurityReport() {
-        showPage("/view/PurityReport.fxml");
+        showPage(PAGE_PURITY_REPORT);
     }
 
     /**
      * Shows the list of water purity reports.
      */
     public void gotoPurityList() {
-        showPage("/view/PurityList.fxml");
+        showPage(PAGE_PURITY_LIST);
     }
 
     /**
      * Shows the purity history chart.
      */
     public void gotoPurityHistory() {
-        showPage("/view/PurityHistory.fxml");
+        showPage(PAGE_PURITY_HISTORY);
     }
 
     /**
      * Shows the administrator's account list.
      */
     public void gotoAccounts() {
-        showPage("/view/AdminAccounts.fxml");
+        showPage(PAGE_ACCOUNTS);
     }
 
     /**
      * Shows the security log.
      */
     public void gotoSecurityLog() {
-        showPage("/view/SecurityLog.fxml");
+        showPage(PAGE_SECURITY_LOG);
     }
 
     /**
@@ -353,17 +426,30 @@ public class Main extends Application {
     }
 
     /**
-     * a method to initialize the page passed from the fxml
-     * @param fxml the fxml files used with the app page
-     * @return the controller of the page the app is currently on
-     * @throws IOException if the page cannot be loaded
+     * Makes a page the window's content. There is one scene for the whole session: pages
+     * only replace its root, so the window keeps the size (and maximised state) the user
+     * gave it.
      */
-    private <C> C replaceSceneContent(String fxml) throws IOException {
-        FXMLLoader loader = load(fxml);
-        Scene scene = new Scene(loader.getRoot(), MINIMUM_WINDOW_WIDTH, MINIMUM_WINDOW_HEIGHT);
-        stage.setScene(scene);
-        stage.sizeToScene();
-        return loader.getController();
+    private void setSceneRoot(Parent root) {
+        Scene scene = stage.getScene();
+        if (scene == null) {
+            Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+            double width = Math.min(INITIAL_WINDOW_WIDTH, screen.getWidth() * MAXIMUM_SCREEN_SHARE);
+            double height = Math.min(INITIAL_WINDOW_HEIGHT, screen.getHeight() * MAXIMUM_SCREEN_SHARE);
+            stage.setScene(Theme.style(new Scene(root, width, height)));
+        } else {
+            scene.setRoot(root);
+            layOut(root);
+        }
+    }
+
+    /**
+     * Styles and lays a new page out now rather than on the next pulse, so it is complete
+     * (tables have their cells) as soon as navigation returns.
+     */
+    private static void layOut(Parent root) {
+        root.applyCss();
+        root.layout();
     }
 
     private Stage dialogStage(Parent root, String title) {
@@ -371,31 +457,8 @@ public class Main extends Application {
         dialog.setTitle(title);
         dialog.initModality(Modality.WINDOW_MODAL);
         dialog.initOwner(stage);
-        dialog.setScene(new Scene(root));
+        dialog.setScene(Theme.style(new Scene(root)));
         return dialog;
-    }
-
-    /**
-     * a method to show the dialog for login
-     * @return whether or not the dialog was shown
-     */
-    public boolean showLoginDialog() {
-        try {
-            FXMLLoader loader = load("/view/LoginPage.fxml");
-            Stage dialog = dialogStage(loader.getRoot(), "Log in");
-            LoginController controller = loader.getController();
-            controller.setDialogStage(dialog);
-            controller.setApp(this);
-
-            // Show the dialog and wait until the user closes it
-            dialog.showAndWait();
-
-            return controller.confirmLoginClicked();
-
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Could not load the login dialog", e);
-            return false;
-        }
     }
 
     /**
@@ -423,6 +486,9 @@ public class Main extends Application {
         try {
             FXMLLoader loader = load("/view/MapPicker.fxml");
             Stage dialog = dialogStage(loader.getRoot(), "Pick a location");
+            dialog.setResizable(true);
+            dialog.setMinWidth(PICKER_MIN_WIDTH);
+            dialog.setMinHeight(PICKER_MIN_HEIGHT);
             MapPickerController controller = loader.getController();
             controller.setUp(this, dialog, initial);
             dialog.showAndWait();

@@ -10,6 +10,7 @@ import javafx.scene.control.TextField;
 import model.GeoPoint;
 import model.Validation;
 import model.WaterPurityCondition;
+import model.WaterPurityReport;
 import model.WaterSourceReport;
 import model.persistence.DataAccessException;
 import model.service.PermissionDeniedException;
@@ -49,6 +50,8 @@ public class PurityReportController implements Initializable, Page {
     @FXML
     private Label errorMessage;
 
+    private final FieldErrors fieldErrors = new FieldErrors();
+
     private Main application;
 
     @Override
@@ -57,6 +60,11 @@ public class PurityReportController implements Initializable, Page {
         ZonedDateTime now = ZonedDateTime.now();
         date.setText(WaterSourceReport.DATE_FORMAT.format(now));
         time.setText(WaterSourceReport.TIME_FORMAT.format(now));
+        fieldErrors.on(Validation.MSG_INVALID_LATITUDE, latitude)
+                .on(Validation.MSG_INVALID_LONGITUDE, longitude)
+                .on(Validation.MSG_PURITY_CONDITION_REQUIRED, condition)
+                .on(Validation.MSG_INVALID_VIRUS_PPM, virusPpm)
+                .on(Validation.MSG_INVALID_CONTAMINANT_PPM, contaminantPpm);
     }
 
     @Override
@@ -84,9 +92,10 @@ public class PurityReportController implements Initializable, Page {
             GeoPoint location = GeoPoint.parse(latitude.getText(), longitude.getText());
             double virus = Validation.parseVirusPpm(virusPpm.getText());
             double contaminant = Validation.parseContaminantPpm(contaminantPpm.getText());
-            application.getContext().getPurityReportService().submit(application.getLoggedAccount(),
-                    location, condition.getValue(), virus, contaminant);
+            WaterPurityReport report = application.getContext().getPurityReportService().submit(
+                    application.getLoggedAccount(), location, condition.getValue(), virus, contaminant);
             application.gotoApp();
+            application.showToast("Purity report #" + report.getReportNumber() + " submitted");
         } catch (IllegalArgumentException | PermissionDeniedException e) {
             showError(e.getMessage());
         } catch (DataAccessException e) {
@@ -116,7 +125,7 @@ public class PurityReportController implements Initializable, Page {
     }
 
     private void showError(String text) {
-        errorMessage.setText(text);
-        errorMessage.setVisible(true);
+        Banners.show(errorMessage, text, Banners.Kind.DANGER);
+        fieldErrors.show(text);
     }
 }

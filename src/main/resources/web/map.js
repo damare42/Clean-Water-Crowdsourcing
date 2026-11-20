@@ -24,6 +24,7 @@
         setMarkers: noop,
         focusMarker: noop,
         enablePicking: noop,
+        invalidateSize: noop,
         markerCount: function () {
             return 0;
         }
@@ -46,8 +47,42 @@
     }
 
     L.Icon.Default.imagePath = 'leaflet/images/';
-    var map = L.map('map', {worldCopyJump: true}).setView([20, 0], 2);
-    L.tileLayer(TILE_URL, {maxZoom: 19, attribution: ATTRIBUTION}).addTo(map);
+    // Animations off: JavaFX's WebKit does not reliably repaint animated zooms and fades
+    // (see map-config.js), and they add nothing to a desktop map.
+    var map = L.map('map', {
+        worldCopyJump: true,
+        fadeAnimation: false,
+        zoomAnimation: false,
+        markerZoomAnimation: false,
+        minZoom: 2
+    }).setView([20, 0], 2);
+    var tiles = L.tileLayer(TILE_URL, {maxZoom: 19, attribution: ATTRIBUTION}).addTo(map);
+
+    // Without a network connection no tile ever loads: say so instead of a silent grey map.
+    // Bottom left (above the legend): the top of the map holds the zoom buttons and the
+    // app's floating report buttons, the bottom right the attribution.
+    var tilesLoaded = 0;
+    var offlineNotice = L.control({position: 'bottomleft'});
+    offlineNotice.onAdd = function () {
+        var box = L.DomUtil.create('div', 'cwc-offline');
+        box.setAttribute('role', 'status');
+        box.textContent = 'Map tiles unavailable \u2013 check your internet connection';
+        return box;
+    };
+    var offlineShown = false;
+    tiles.on('tileload', function () {
+        tilesLoaded++;
+        if (offlineShown) {
+            offlineNotice.remove();
+            offlineShown = false;
+        }
+    });
+    tiles.on('tileerror', function () {
+        if (tilesLoaded === 0 && !offlineShown) {
+            offlineNotice.addTo(map);
+            offlineShown = true;
+        }
+    });
 
     var markerLayer = L.layerGroup().addTo(map);
     var markersByKey = {};
@@ -87,6 +122,28 @@
         return node;
     }
 
+    // Condition values that get a coloured badge in the popup; anything else is plain text.
+    var CONDITION_BADGES = {
+        Potable: 'ok', Safe: 'ok',
+        Clear: 'info',
+        Muddy: 'warn', Treatable: 'warn',
+        Waste: 'bad', Unsafe: 'bad'
+    };
+
+    function valueCell(field) {
+        var cell = element('td');
+        var tone = field.label === 'Condition' && Object.prototype.hasOwnProperty.call(CONDITION_BADGES, field.value)
+            ? CONDITION_BADGES[field.value] : null;
+        if (tone) {
+            var badge = element('span', field.value);
+            badge.className = 'cwc-badge cwc-badge-' + tone;
+            cell.appendChild(badge);
+        } else {
+            cell.textContent = field.value;
+        }
+        return cell;
+    }
+
     function popupContent(marker) {
         var root = element('div');
         root.className = 'cwc-popup';
@@ -95,12 +152,13 @@
         marker.fields.forEach(function (field) {
             var row = element('tr');
             row.appendChild(element('th', field.label));
-            row.appendChild(element('td', field.value));
+            row.appendChild(valueCell(field));
             table.appendChild(row);
         });
         root.appendChild(table);
         var details = element('button', 'Details');
         details.type = 'button';
+        details.className = 'cwc-details';
         details.addEventListener('click', function () {
             if (bridge()) {
                 bridge().openDetails(marker.kind, String(marker.id));
@@ -120,6 +178,8 @@
             var options = {title: m.title, alt: m.title};
             if (m.kind === 'purity') {
                 options.icon = PURITY_ICON;
+                // Keep the small purity dots above the larger source pins.
+                options.zIndexOffset = 1000;
                 purityCount++;
             }
             var marker = L.marker([m.lat, m.lon], options);
@@ -185,6 +245,10 @@
         setMarkers: setMarkers,
         focusMarker: focusMarker,
         enablePicking: enablePicking,
+        invalidateSize: function () {
+            map.invalidateSize({pan: false});
+            return true;
+        },
         markerCount: function () {
             return Object.keys(markersByKey).length;
         }

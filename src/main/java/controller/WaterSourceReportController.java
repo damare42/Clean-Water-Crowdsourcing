@@ -7,7 +7,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.AnchorPane;
 import model.GeoPoint;
 import model.Validation;
 import model.WaterSourceCondition;
@@ -26,7 +25,7 @@ import java.util.logging.Logger;
  * Created by Sean on 10/6/2016.
  * A Controller class to handle the Water Source Report form
  */
-public class WaterSourceReportController extends AnchorPane implements Initializable, Page {
+public class WaterSourceReportController implements Initializable, Page {
     private static final Logger LOGGER = Logger.getLogger(WaterSourceReportController.class.getName());
 
     private Main application;
@@ -48,6 +47,8 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
     private TextField longitude;
     @FXML
     private Label errorMessage;
+
+    private final FieldErrors fieldErrors = new FieldErrors();
 
     /**
      * Setup the main application link so we can call methods there
@@ -76,11 +77,14 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
         ZonedDateTime now = ZonedDateTime.now();
         date.setText(WaterSourceReport.DATE_FORMAT.format(now));
         time.setText(WaterSourceReport.TIME_FORMAT.format(now));
-        errorMessage.setText("");
+        fieldErrors.on(Validation.MSG_INVALID_LATITUDE, latitude)
+                .on(Validation.MSG_INVALID_LONGITUDE, longitude)
+                .on(Validation.MSG_TYPE_REQUIRED, type)
+                .on(Validation.MSG_CONDITION_REQUIRED, condition);
     }
 
     /**
-     * Goes to the previous page when the button clicked
+     * Goes back to the map without saving.
      */
     @FXML
     private void backButtonPressed() {
@@ -95,9 +99,10 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
         try {
             double lat = Validation.parseLatitude(latitude.getText());
             double lng = Validation.parseLongitude(longitude.getText());
-            application.getContext().getReportService().submit(application.getLoggedAccount(),
-                    lat, lng, type.getValue(), condition.getValue());
+            WaterSourceReport report = application.getContext().getReportService().submit(
+                    application.getLoggedAccount(), lat, lng, type.getValue(), condition.getValue());
             application.gotoApp();
+            application.showToast("Report #" + report.getReportNumber() + " submitted");
         } catch (IllegalArgumentException | PermissionDeniedException e) {
             showError(e.getMessage());
         } catch (DataAccessException e) {
@@ -120,7 +125,7 @@ public class WaterSourceReportController extends AnchorPane implements Initializ
     }
 
     private void showError(String text) {
-        errorMessage.setText(text);
-        errorMessage.setVisible(true);
+        Banners.show(errorMessage, text, Banners.Kind.DANGER);
+        fieldErrors.show(text);
     }
 }

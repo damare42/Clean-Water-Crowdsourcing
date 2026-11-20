@@ -1,57 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.WSRViewerController">
+<VBox styleClass="page" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.WSRViewerController">
    <children>
-      <BorderPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-         <top>
-            <VBox alignment="CENTER" spacing="4.0" BorderPane.alignment="CENTER">
+      <HBox styleClass="page-header">
+         <children>
+            <VBox minWidth="0.0" spacing="4.0" HBox.hgrow="ALWAYS">
                <children>
-                  <Label text="Water Source Reports List" />
-                  <Label fx:id="message" managed="false" textFill="#d32020" visible="false" wrapText="true" />
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <Label styleClass="page-title" text="Water source reports" />
+                        <Label fx:id="countBadge" managed="false" minWidth="-Infinity" styleClass="badge, badge-neutral" visible="false" />
+                     </children>
+                  </HBox>
+                  <Label styleClass="page-subtitle" text="Water sources reported by the community. Double-click a report or press Enter to see its details." wrapText="true" />
                </children>
-               <padding>
-                  <Insets bottom="6.0" top="10.0" />
-               </padding>
             </VBox>
-         </top>
-         <center>
-            <TableView fx:id="reportTable" onKeyPressed="#tableKeyPressed" BorderPane.alignment="CENTER">
-               <placeholder>
-                  <Label text="No reports yet" />
-               </placeholder>
-               <columns>
-                  <TableColumn fx:id="numberColumn" prefWidth="70.0" text="Number" />
-                  <TableColumn fx:id="dateColumn" prefWidth="95.0" text="Date" />
-                  <TableColumn fx:id="timeColumn" prefWidth="60.0" text="Time" />
-                  <TableColumn fx:id="reporterColumn" prefWidth="120.0" text="Reporter" />
-                  <TableColumn fx:id="typeColumn" prefWidth="80.0" text="Type" />
-                  <TableColumn fx:id="conditionColumn" prefWidth="85.0" text="Condition" />
-                  <TableColumn fx:id="latitudeColumn" prefWidth="110.0" text="Latitude" />
-                  <TableColumn fx:id="longitudeColumn" prefWidth="110.0" text="Longitude" />
-               </columns>
-            </TableView>
-         </center>
-         <bottom>
-            <HBox alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
+            <HBox styleClass="page-actions">
                <children>
-                  <Button fx:id="detailsButton" mnemonicParsing="false" onAction="#detailsPressed" text="Details" />
-                  <Button fx:id="goBack" mnemonicParsing="false" onAction="#goBackButtonPressed" text="Back" />
+                  <Button fx:id="detailsButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#detailsPressed" text="Details">
+                     <graphic><FontIcon iconLiteral="mdoal-info" /></graphic>
+                     <tooltip><Tooltip text="Show the selected report" /></tooltip>
+                  </Button>
+                  <Button fx:id="newReportButton" managed="false" visible="false" minWidth="-Infinity" mnemonicParsing="false" onAction="#newReportPressed" styleClass="accent" text="New report">
+                     <graphic><FontIcon iconLiteral="mdoal-add_location_alt" /></graphic>
+                  </Button>
                </children>
-               <padding>
-                  <Insets bottom="10.0" top="10.0" />
-               </padding>
             </HBox>
-         </bottom>
-      </BorderPane>
+         </children>
+      </HBox>
+      <Label fx:id="message" managed="false" maxWidth="Infinity" styleClass="banner, banner-danger" visible="false" wrapText="true">
+         <graphic><FontIcon iconLiteral="mdoal-error_outline" /></graphic>
+      </Label>
+      <TableView fx:id="reportTable" onKeyPressed="#tableKeyPressed" VBox.vgrow="ALWAYS">
+         <placeholder>
+            <VBox styleClass="empty-state">
+               <children>
+                  <FontIcon iconLiteral="mdoal-inbox" styleClass="empty-icon" />
+                  <Label styleClass="empty-title" text="No reports yet" />
+                  <Label styleClass="empty-text" text="Water sources reported by the community will be listed here." wrapText="true" />
+               </children>
+            </VBox>
+         </placeholder>
+         <columns>
+                  <TableColumn fx:id="numberColumn" minWidth="40" prefWidth="50" styleClass="numeric" text="#" />
+                  <TableColumn fx:id="dateColumn" minWidth="90" prefWidth="100" text="Date" />
+                  <TableColumn fx:id="timeColumn" minWidth="54" prefWidth="64" text="Time" />
+                  <TableColumn fx:id="reporterColumn" minWidth="76" prefWidth="110" text="Reporter" />
+                  <TableColumn fx:id="typeColumn" minWidth="66" prefWidth="90" text="Type" />
+                  <TableColumn fx:id="conditionColumn" minWidth="92" prefWidth="110" text="Condition" />
+                  <TableColumn fx:id="latitudeColumn" minWidth="76" prefWidth="100" styleClass="numeric" text="Latitude" />
+                  <TableColumn fx:id="longitudeColumn" minWidth="86" prefWidth="110" styleClass="numeric" text="Longitude" />
+         </columns>
+      </TableView>
    </children>
-</AnchorPane>
+</VBox>

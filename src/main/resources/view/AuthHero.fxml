@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<!-- The brand panel on the left of the welcome and registration pages (no controller). -->
+<VBox styleClass="auth-hero" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <FontIcon iconLiteral="mdomz-opacity" styleClass="hero-logo" />
+      <Label styleClass="hero-title" text="Clean Water Crowdsourcing" wrapText="true" />
+      <Label styleClass="hero-tagline" text="Find and report safe drinking water near you" wrapText="true" />
+      <Region minHeight="12.0" />
+      <HBox styleClass="feature">
+         <children>
+            <StackPane styleClass="feature-icon"><children><FontIcon iconLiteral="mdomz-map" /></children></StackPane>
+            <VBox spacing="2.0" HBox.hgrow="ALWAYS">
+               <children>
+                  <Label styleClass="feature-title" text="Map reports" />
+                  <Label styleClass="feature-text" text="See every reported water source on a map and add your own in seconds." wrapText="true" />
+               </children>
+            </VBox>
+         </children>
+      </HBox>
+      <HBox styleClass="feature">
+         <children>
+            <StackPane styleClass="feature-icon"><children><FontIcon iconLiteral="mdomz-science" /></children></StackPane>
+            <VBox spacing="2.0" HBox.hgrow="ALWAYS">
+               <children>
+                  <Label styleClass="feature-title" text="Track purity" />
+                  <Label styleClass="feature-text" text="Workers record virus and contaminant levels; managers follow the trends." wrapText="true" />
+               </children>
+            </VBox>
+         </children>
+      </HBox>
+      <HBox styleClass="feature">
+         <children>
+            <StackPane styleClass="feature-icon"><children><FontIcon iconLiteral="mdoal-groups" /></children></StackPane>
+            <VBox spacing="2.0" HBox.hgrow="ALWAYS">
+               <children>
+                  <Label styleClass="feature-title" text="Community-driven" />
+                  <Label styleClass="feature-text" text="Reports come from people on the ground, so the map stays current." wrapText="true" />
+               </children>
+            </VBox>
+         </children>
+      </HBox>
+   </children>
+</VBox>

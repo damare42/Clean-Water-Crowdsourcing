@@ -10,6 +10,7 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import model.GeoPoint;
 import model.MonthlyAverage;
 import model.PurityHistory;
@@ -53,6 +54,14 @@ public class PurityHistoryController implements Initializable, Page {
     private LineChart<String, Number> chart;
     @FXML
     private CategoryAxis monthAxis;
+    @FXML
+    private VBox emptyChart;
+    @FXML
+    private Label emptyTitle;
+    @FXML
+    private Label emptyText;
+
+    private final FieldErrors fieldErrors = new FieldErrors();
 
     private Main application;
 
@@ -63,6 +72,11 @@ public class PurityHistoryController implements Initializable, Page {
         monthAxis.setAutoRanging(false);
         monthAxis.setCategories(FXCollections.observableArrayList(
                 Arrays.stream(Month.values()).map(PurityHistoryController::monthName).toList()));
+        chart.setVisible(false);
+        fieldErrors.on(Validation.MSG_INVALID_LATITUDE, latitude)
+                .on(Validation.MSG_INVALID_LONGITUDE, longitude)
+                .on(Validation.MSG_INVALID_RADIUS, radius)
+                .on(Validation.MSG_INVALID_YEAR, year);
     }
 
     @Override
@@ -89,15 +103,28 @@ public class PurityHistoryController implements Initializable, Page {
             int chosenYear = Validation.parseYear(year.getText());
             PurityHistory history = application.getContext().getPurityReportService()
                     .history(application.getLoggedAccount(), center, radiusKm, chosenYear, metric.getValue());
+            fieldErrors.clear();
             draw(history);
         } catch (IllegalArgumentException | PermissionDeniedException e) {
-            chart.getData().clear();
-            message.setText(e.getMessage());
+            showError(e.getMessage());
+            fieldErrors.show(e.getMessage());
         } catch (DataAccessException e) {
             LOGGER.log(Level.SEVERE, "Could not load the purity history", e);
-            chart.getData().clear();
-            message.setText("Could not load the purity history: " + e.getMessage());
+            showError("Could not load the purity history: " + e.getMessage());
         }
+    }
+
+    private void showError(String text) {
+        chart.getData().clear();
+        Banners.show(message, text, Banners.Kind.DANGER);
+        showEmpty("No chart", "Correct the highlighted field and press Show again.");
+    }
+
+    private void showEmpty(String title, String text) {
+        emptyTitle.setText(title);
+        emptyText.setText(text);
+        emptyChart.setVisible(true);
+        chart.setVisible(false);
     }
 
     private void draw(PurityHistory history) {
@@ -112,10 +139,17 @@ public class PurityHistoryController implements Initializable, Page {
         chart.setTitle("Monthly average " + history.metric().label() + " in " + history.year());
         String where = " within " + formatKm(history.radiusKm()) + " km of "
                 + history.center().formattedLatitude() + ", " + history.center().formattedLongitude();
-        message.setText(history.isEmpty()
+        Banners.show(message, history.isEmpty()
                 ? "No purity reports" + where + " in " + history.year() + "."
                 : reports + (reports == 1 ? " report" : " reports") + where + " in "
-                        + history.months().size() + (history.months().size() == 1 ? " month." : " months."));
+                        + history.months().size() + (history.months().size() == 1 ? " month." : " months."),
+                history.isEmpty() ? Banners.Kind.WARNING : Banners.Kind.INFO);
+        if (history.isEmpty()) {
+            showEmpty("No purity reports", "Try a larger radius or another year.");
+        } else {
+            emptyChart.setVisible(false);
+            chart.setVisible(true);
+        }
     }
 
     private static String formatKm(double km) {
@@ -132,13 +166,5 @@ public class PurityHistoryController implements Initializable, Page {
                     latitude.setText(point.formattedLatitude());
                     longitude.setText(point.formattedLongitude());
                 });
-    }
-
-    /**
-     * Goes back to the map.
-     */
-    @FXML
-    private void backPressed() {
-        application.gotoApp();
     }
 }

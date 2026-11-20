@@ -1,6 +1,11 @@
 package controller;
 
+import atlantafx.base.theme.Styles;
 import fxapp.Main;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.TableCell;
+import fxapp.Theme;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -11,7 +16,6 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.paint.Color;
 import model.Account;
 import model.AccountSummary;
 import model.AccountType;
@@ -66,12 +70,35 @@ public class AdminAccountsController implements Initializable, Page {
     public void initialize(URL location, ResourceBundle resources) {
         Tables.column(idColumn, AccountSummary::id, Function.identity());
         idColumn.setComparator(String.CASE_INSENSITIVE_ORDER);
-        Tables.column(typeColumn, AccountSummary::type, Enum::name);
+        Tables.badgeColumn(typeColumn, AccountSummary::type, Enum::name, Badges::roleStyle);
         typeColumn.setComparator(Comparator.comparing(Enum::name));
         Tables.column(firstNameColumn, AccountSummary::firstName, Function.identity());
         Tables.column(lastNameColumn, AccountSummary::lastName, Function.identity());
         Tables.column(emailColumn, AccountSummary::email, Function.identity());
-        Tables.column(statusColumn, AccountSummary::status, Function.identity());
+        statusColumn.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().status()));
+        statusColumn.setCellFactory(column -> new TableCell<>() {
+            private final Label badge = Badges.badge("", Badges.NEUTRAL);
+
+            {
+                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            }
+
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                AccountSummary row = empty || getTableRow() == null ? null : getTableRow().getItem();
+                if (row == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                badge.setText(status);
+                badge.getStyleClass().setAll("label", Badges.BADGE, Badges.statusStyle(row.banned()));
+                setText(status);
+                setGraphic(badge);
+            }
+        });
+        Tables.style(accountTable);
     }
 
     @Override
@@ -104,10 +131,10 @@ public class AdminAccountsController implements Initializable, Page {
                         .ifPresent(r -> accountTable.getSelectionModel().select(r));
             }
         } catch (PermissionDeniedException e) {
-            showMessage(e.getMessage(), ProfileController.ERROR_COLOR);
+            showMessage(e.getMessage(), Banners.Kind.DANGER);
         } catch (DataAccessException e) {
             LOGGER.log(Level.SEVERE, "Could not load accounts", e);
-            showMessage("Could not load accounts: " + e.getMessage(), ProfileController.ERROR_COLOR);
+            showMessage("Could not load accounts: " + e.getMessage(), Banners.Kind.DANGER);
         }
     }
 
@@ -138,12 +165,12 @@ public class AdminAccountsController implements Initializable, Page {
         }
         try {
             service().setBanned(application.getLoggedAccount(), selected.id(), banned);
-            showMessage((banned ? "Banned " : "Unbanned ") + selected.id(), ProfileController.SUCCESS_COLOR);
+            showMessage((banned ? "Banned " : "Unbanned ") + selected.id(), Banners.Kind.SUCCESS);
         } catch (IllegalArgumentException | PermissionDeniedException e) {
-            showMessage(e.getMessage(), ProfileController.ERROR_COLOR);
+            showMessage(e.getMessage(), Banners.Kind.DANGER);
         } catch (DataAccessException e) {
             LOGGER.log(Level.SEVERE, "Could not change the account", e);
-            showMessage("Could not change the account: " + e.getMessage(), ProfileController.ERROR_COLOR);
+            showMessage("Could not change the account: " + e.getMessage(), Banners.Kind.DANGER);
         }
         reload(selected.id());
     }
@@ -163,32 +190,29 @@ public class AdminAccountsController implements Initializable, Page {
         confirm.setTitle("Delete account");
         confirm.setHeaderText("Delete account");
         confirm.initOwner(accountTable.getScene().getWindow());
+        Theme.style(confirm);
+        Button ok = (Button) confirm.getDialogPane().lookupButton(ButtonType.OK);
+        ok.setText("Delete");
+        ok.getStyleClass().add(Styles.DANGER);
+        // Nothing is the default: ENTER must not delete. ESC cancels.
+        ok.setDefaultButton(false);
         Optional<ButtonType> answer = confirm.showAndWait();
         if (answer.isEmpty() || answer.get() != ButtonType.OK) {
             return;
         }
         try {
             service().deleteAccount(application.getLoggedAccount(), selected.id());
-            showMessage("Deleted " + selected.id(), ProfileController.SUCCESS_COLOR);
+            showMessage("Deleted " + selected.id(), Banners.Kind.SUCCESS);
         } catch (IllegalArgumentException | PermissionDeniedException e) {
-            showMessage(e.getMessage(), ProfileController.ERROR_COLOR);
+            showMessage(e.getMessage(), Banners.Kind.DANGER);
         } catch (DataAccessException e) {
             LOGGER.log(Level.SEVERE, "Could not delete the account", e);
-            showMessage("Could not delete the account: " + e.getMessage(), ProfileController.ERROR_COLOR);
+            showMessage("Could not delete the account: " + e.getMessage(), Banners.Kind.DANGER);
         }
         reload(null);
     }
 
-    private void showMessage(String text, Color color) {
-        message.setText(text);
-        message.setTextFill(color);
-    }
-
-    /**
-     * Goes back to the map.
-     */
-    @FXML
-    private void backPressed() {
-        application.gotoApp();
+    private void showMessage(String text, Banners.Kind kind) {
+        Banners.show(message, text, kind);
     }
 }

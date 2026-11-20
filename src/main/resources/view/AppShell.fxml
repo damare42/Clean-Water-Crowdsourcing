@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<!-- The frame of every signed-in page: a sidebar with the navigation and the user menu,
+     and the current page in the content area (with a layer for toasts on top). -->
+<BorderPane fx:id="shell" styleClass="shell" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.ShellController">
+   <fx:define>
+      <ToggleGroup fx:id="nav" />
+   </fx:define>
+   <left>
+      <VBox fx:id="sidebar" styleClass="sidebar">
+         <children>
+            <HBox styleClass="brand">
+               <children>
+                  <FontIcon iconLiteral="mdomz-opacity" />
+                  <Label styleClass="brand-name" text="Clean Water" />
+               </children>
+            </HBox>
+            <ToggleButton fx:id="mapNav" maxWidth="Infinity" mnemonicParsing="false" onAction="#mapClicked" styleClass="nav-item" text="Map" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdomz-map" /></graphic>
+            </ToggleButton>
+            <ToggleButton fx:id="createReport" maxWidth="Infinity" mnemonicParsing="false" onAction="#createWaterSourceReportClicked" styleClass="nav-item" text="Report water source" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdoal-add_location_alt" /></graphic>
+            </ToggleButton>
+            <ToggleButton fx:id="reportList" maxWidth="Infinity" mnemonicParsing="false" onAction="#reportListClicked" styleClass="nav-item" text="Water source reports" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdomz-table_view" /></graphic>
+            </ToggleButton>
+            <ToggleButton fx:id="createPurityReport" maxWidth="Infinity" mnemonicParsing="false" onAction="#createPurityReportClicked" styleClass="nav-item" text="Report purity" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdomz-science" /></graphic>
+            </ToggleButton>
+            <ToggleButton fx:id="purityList" maxWidth="Infinity" mnemonicParsing="false" onAction="#purityListClicked" styleClass="nav-item" text="Purity reports" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdomz-table_chart" /></graphic>
+            </ToggleButton>
+            <ToggleButton fx:id="purityHistory" maxWidth="Infinity" mnemonicParsing="false" onAction="#purityHistoryClicked" styleClass="nav-item" text="Purity history" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdoal-bar_chart" /></graphic>
+            </ToggleButton>
+            <Label fx:id="adminSection" maxWidth="Infinity" styleClass="nav-section" text="ADMINISTRATION" />
+            <ToggleButton fx:id="manageAccounts" maxWidth="Infinity" mnemonicParsing="false" onAction="#manageAccountsClicked" styleClass="nav-item" text="Accounts" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdoal-admin_panel_settings" /></graphic>
+            </ToggleButton>
+            <ToggleButton fx:id="securityLog" maxWidth="Infinity" mnemonicParsing="false" onAction="#securityLogClicked" styleClass="nav-item" text="Security log" toggleGroup="$nav">
+               <graphic><FontIcon iconLiteral="mdomz-policy" /></graphic>
+            </ToggleButton>
+            <Region VBox.vgrow="ALWAYS" />
+            <MenuButton fx:id="username" accessibleText="Account menu" maxWidth="Infinity" mnemonicParsing="false" popupSide="TOP" styleClass="user-chip">
+               <tooltip><Tooltip text="Profile and log out" /></tooltip>
+               <graphic>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <StackPane styleClass="avatar">
+                           <children>
+                              <Label fx:id="initials" />
+                           </children>
+                        </StackPane>
+                        <VBox spacing="3.0">
+                           <children>
+                              <Label fx:id="fullName" styleClass="user-name" />
+                              <HBox alignment="CENTER_LEFT" spacing="6.0">
+                                 <children>
+                                    <Label fx:id="roleBadge" styleClass="badge" />
+                                 </children>
+                              </HBox>
+                           </children>
+                        </VBox>
+                     </children>
+                  </HBox>
+               </graphic>
+               <items>
+                  <MenuItem fx:id="profile" mnemonicParsing="false" onAction="#profilePressed" text="Profile">
+                     <graphic><FontIcon iconLiteral="mdoal-account_circle" /></graphic>
+                  </MenuItem>
+                  <SeparatorMenuItem />
+                  <MenuItem fx:id="logout" mnemonicParsing="false" onAction="#logoutPressed" text="Log out">
+                     <graphic><FontIcon iconLiteral="mdoal-exit_to_app" /></graphic>
+                  </MenuItem>
+               </items>
+            </MenuButton>
+         </children>
+      </VBox>
+   </left>
+   <center>
+      <StackPane fx:id="content" styleClass="app-background">
+         <children>
+            <VBox fx:id="toastLayer" maxHeight="-Infinity" maxWidth="-Infinity" pickOnBounds="false" styleClass="toast-layer" StackPane.alignment="BOTTOM_RIGHT" />
+         </children>
+      </StackPane>
+   </center>
+</BorderPane>
