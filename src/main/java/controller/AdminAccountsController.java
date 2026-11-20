@@ -1,6 +1,10 @@
 package controller;
 
+import atlantafx.base.theme.Styles;
 import fxapp.Main;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.control.TableCell;
 import fxapp.Theme;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -66,12 +70,35 @@ public class AdminAccountsController implements Initializable, Page {
     public void initialize(URL location, ResourceBundle resources) {
         Tables.column(idColumn, AccountSummary::id, Function.identity());
         idColumn.setComparator(String.CASE_INSENSITIVE_ORDER);
-        Tables.column(typeColumn, AccountSummary::type, Enum::name);
+        Tables.badgeColumn(typeColumn, AccountSummary::type, Enum::name, Badges::roleStyle);
         typeColumn.setComparator(Comparator.comparing(Enum::name));
         Tables.column(firstNameColumn, AccountSummary::firstName, Function.identity());
         Tables.column(lastNameColumn, AccountSummary::lastName, Function.identity());
         Tables.column(emailColumn, AccountSummary::email, Function.identity());
-        Tables.column(statusColumn, AccountSummary::status, Function.identity());
+        statusColumn.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().status()));
+        statusColumn.setCellFactory(column -> new TableCell<>() {
+            private final Label badge = Badges.badge("", Badges.NEUTRAL);
+
+            {
+                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            }
+
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                AccountSummary row = empty || getTableRow() == null ? null : getTableRow().getItem();
+                if (row == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+                badge.setText(status);
+                badge.getStyleClass().setAll("label", Badges.BADGE, Badges.statusStyle(row.banned()));
+                setText(status);
+                setGraphic(badge);
+            }
+        });
+        Tables.style(accountTable);
     }
 
     @Override
@@ -164,6 +191,11 @@ public class AdminAccountsController implements Initializable, Page {
         confirm.setHeaderText("Delete account");
         confirm.initOwner(accountTable.getScene().getWindow());
         Theme.style(confirm);
+        Button ok = (Button) confirm.getDialogPane().lookupButton(ButtonType.OK);
+        ok.setText("Delete");
+        ok.getStyleClass().add(Styles.DANGER);
+        // Nothing is the default: ENTER must not delete. ESC cancels.
+        ok.setDefaultButton(false);
         Optional<ButtonType> answer = confirm.showAndWait();
         if (answer.isEmpty() || answer.get() != ButtonType.OK) {
             return;

@@ -4,6 +4,7 @@ import atlantafx.base.controls.Notification;
 import atlantafx.base.theme.Styles;
 import fxapp.Main;
 import javafx.animation.PauseTransition;
+import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -11,6 +12,7 @@ import javafx.scene.control.MenuButton;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
@@ -31,6 +33,12 @@ public class ShellController {
     /** Marks the nav item of the current page, which stays selected when clicked again. */
     private static final String KEEP_SELECTED = "cwc.keepSelected";
 
+    /** Below this window width pages use less padding. */
+    static final double COMPACT_WIDTH = 1100;
+    private static final PseudoClass COMPACT = PseudoClass.getPseudoClass("compact");
+
+    @FXML
+    private BorderPane shell;
     @FXML
     private ToggleGroup nav;
     @FXML
@@ -77,6 +85,8 @@ public class ShellController {
             }
         });
         roleBadge.setMinWidth(Label.USE_PREF_SIZE);
+        shell.widthProperty().addListener((observable, old, width) ->
+                shell.pseudoClassStateChanged(COMPACT, width.doubleValue() < COMPACT_WIDTH));
         itemsByPage = Map.of(
                 Main.PAGE_MAP, mapNav,
                 Main.PAGE_SOURCE_REPORT, createReport,
@@ -176,7 +186,7 @@ public class ShellController {
     }
 
     /**
-     * Shows a short confirmation in the top-right corner for a few seconds.
+     * Shows a short confirmation in the bottom-right corner for a few seconds.
      * @param message the text to show
      */
     public void showToast(String message) {

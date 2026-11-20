@@ -18,7 +18,7 @@
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
                         <Label styleClass="page-title" text="Accounts" />
-                        <Label fx:id="countBadge" styleClass="badge" visible="false" />
+                        <Label fx:id="countBadge" managed="false" minWidth="-Infinity" styleClass="badge, badge-neutral" visible="false" />
                      </children>
                   </HBox>
                   <Label styleClass="page-subtitle" text="Ban, unban or delete accounts. You cannot ban or delete your own account." wrapText="true" />
@@ -26,14 +26,17 @@
             </VBox>
             <HBox styleClass="page-actions">
                <children>
-                  <Button minWidth="-Infinity" fx:id="banButton" mnemonicParsing="false" onAction="#banPressed" text="Ban">
+                  <Button fx:id="banButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#banPressed" text="Ban">
                      <graphic><FontIcon iconLiteral="mdoal-block" /></graphic>
+                     <tooltip><Tooltip text="Stop the selected account from signing in" /></tooltip>
                   </Button>
-                  <Button minWidth="-Infinity" fx:id="unbanButton" mnemonicParsing="false" onAction="#unbanPressed" text="Unban">
+                  <Button fx:id="unbanButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#unbanPressed" text="Unban">
                      <graphic><FontIcon iconLiteral="mdoal-check_circle_outline" /></graphic>
+                     <tooltip><Tooltip text="Let the selected account sign in again" /></tooltip>
                   </Button>
-                  <Button minWidth="-Infinity" fx:id="deleteButton" mnemonicParsing="false" onAction="#deletePressed" styleClass="danger, button-outlined" text="Delete">
+                  <Button fx:id="deleteButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#deletePressed" styleClass="danger, button-outlined" text="Delete">
                      <graphic><FontIcon iconLiteral="mdoal-delete" /></graphic>
+                     <tooltip><Tooltip text="Delete the selected account" /></tooltip>
                   </Button>
                </children>
             </HBox>
@@ -44,15 +47,21 @@
       </Label>
       <TableView fx:id="accountTable" VBox.vgrow="ALWAYS">
          <placeholder>
-            <Label styleClass="page-subtitle" text="No accounts" />
+            <VBox styleClass="empty-state">
+               <children>
+                  <FontIcon iconLiteral="mdoal-inbox" styleClass="empty-icon" />
+                  <Label styleClass="empty-title" text="No accounts" />
+                  <Label styleClass="empty-text" text="Registered accounts will be listed here." wrapText="true" />
+               </children>
+            </VBox>
          </placeholder>
          <columns>
-                  <TableColumn fx:id="idColumn" minWidth="100" prefWidth="140" text="Username" />
-                  <TableColumn fx:id="typeColumn" minWidth="80" prefWidth="100" text="Type" />
-                  <TableColumn fx:id="firstNameColumn" minWidth="90" prefWidth="120" text="First name" />
-                  <TableColumn fx:id="lastNameColumn" minWidth="90" prefWidth="120" text="Last name" />
-                  <TableColumn fx:id="emailColumn" minWidth="140" prefWidth="200" text="Email" />
-                  <TableColumn fx:id="statusColumn" minWidth="80" prefWidth="100" text="Status" />
+                  <TableColumn fx:id="idColumn" minWidth="100" prefWidth="120" text="Username" />
+                  <TableColumn fx:id="typeColumn" minWidth="90" prefWidth="96" text="Role" />
+                  <TableColumn fx:id="firstNameColumn" minWidth="90" prefWidth="110" text="First name" />
+                  <TableColumn fx:id="lastNameColumn" minWidth="90" prefWidth="110" text="Last name" />
+                  <TableColumn fx:id="emailColumn" minWidth="140" prefWidth="180" text="Email" />
+                  <TableColumn fx:id="statusColumn" minWidth="84" prefWidth="90" text="Status" />
          </columns>
       </TableView>
    </children>

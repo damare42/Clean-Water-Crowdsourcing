@@ -16,7 +16,7 @@
 
 <!-- The frame of every signed-in page: a sidebar with the navigation and the user menu,
      and the current page in the content area (with a layer for toasts on top). -->
-<BorderPane fx:id="shell" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.ShellController">
+<BorderPane fx:id="shell" styleClass="shell" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.ShellController">
    <fx:define>
       <ToggleGroup fx:id="nav" />
    </fx:define>
@@ -94,7 +94,7 @@
    <center>
       <StackPane fx:id="content" styleClass="app-background">
          <children>
-            <VBox fx:id="toastLayer" maxHeight="-Infinity" maxWidth="-Infinity" pickOnBounds="false" styleClass="toast-layer" StackPane.alignment="TOP_RIGHT" />
+            <VBox fx:id="toastLayer" maxHeight="-Infinity" maxWidth="-Infinity" pickOnBounds="false" styleClass="toast-layer" StackPane.alignment="BOTTOM_RIGHT" />
          </children>
       </StackPane>
    </center>

@@ -14,6 +14,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.AnchorPane;
 import model.GeoPoint;
+import model.Permission;
 import model.WaterSourceCondition;
 import model.WaterSourceReport;
 import model.WaterSourceType;
@@ -65,6 +66,10 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
     private Button detailsButton;
     @FXML
     private Label message;
+    @FXML
+    private Label countBadge;
+    @FXML
+    private Button newReportButton;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -77,7 +82,7 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
         reporterColumn.setComparator(String.CASE_INSENSITIVE_ORDER);
         Tables.column(typeColumn, WaterSourceReport::getType, Enum::name);
         typeColumn.setComparator(Comparator.comparing(Enum::name));
-        Tables.column(conditionColumn, WaterSourceReport::getCondition, Enum::name);
+        Tables.badgeColumn(conditionColumn, WaterSourceReport::getCondition, Enum::name, Badges::styleOf);
         conditionColumn.setComparator(Comparator.comparing(Enum::name));
         Tables.column(latitudeColumn, WaterSourceReport::getLatitude, GeoPoint::format);
         Tables.column(longitudeColumn, WaterSourceReport::getLongitude, GeoPoint::format);
@@ -92,6 +97,7 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
             });
             return row;
         });
+        Tables.style(reportTable);
         detailsButton.disableProperty().bind(
                 reportTable.getSelectionModel().selectedItemProperty().isNull());
     }
@@ -103,6 +109,10 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
     @Override
     public void setApp(Main application) {
         this.application = application;
+        boolean mayReport = application.getLoggedAccount() != null
+                && application.getLoggedAccount().hasPermission(Permission.SUBMIT_SOURCE_REPORT);
+        newReportButton.setVisible(mayReport);
+        newReportButton.setManaged(mayReport);
         try {
             reportTable.setItems(FXCollections.observableArrayList(application.getContext()
                     .getReportService().listReports(application.getLoggedAccount())));
@@ -110,6 +120,9 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
             numberColumn.setSortType(TableColumn.SortType.ASCENDING);
             reportTable.getSortOrder().setAll(List.of(numberColumn));
             reportTable.sort();
+            countBadge.setText(String.valueOf(reportTable.getItems().size()));
+            countBadge.setVisible(true);
+            countBadge.setManaged(true);
         } catch (PermissionDeniedException e) {
             showMessage(e.getMessage());
         } catch (DataAccessException e) {
@@ -143,5 +156,13 @@ public class WSRViewerController extends AnchorPane implements Initializable, Pa
             event.consume();
             detailsPressed();
         }
+    }
+
+    /**
+     * Opens the form for a new report.
+     */
+    @FXML
+    private void newReportPressed() {
+        application.gotoWaterSourceReport();
     }
 }

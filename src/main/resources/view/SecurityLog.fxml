@@ -18,7 +18,7 @@
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
                         <Label styleClass="page-title" text="Security log" />
-                        <Label fx:id="countBadge" styleClass="badge" visible="false" />
+                        <Label fx:id="countBadge" managed="false" minWidth="-Infinity" styleClass="badge, badge-neutral" visible="false" />
                      </children>
                   </HBox>
                   <Label styleClass="page-subtitle" text="Sign-ins, registrations and account changes, newest first." wrapText="true" />
@@ -26,7 +26,7 @@
             </VBox>
             <HBox styleClass="page-actions">
                <children>
-                  <Button minWidth="-Infinity" fx:id="refreshButton" mnemonicParsing="false" onAction="#refreshPressed" text="Refresh">
+                  <Button fx:id="refreshButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#refreshPressed" text="Refresh">
                      <graphic><FontIcon iconLiteral="mdomz-refresh" /></graphic>
                      <tooltip><Tooltip text="Load the newest events" /></tooltip>
                   </Button>
@@ -39,15 +39,21 @@
       </Label>
       <TableView fx:id="eventTable" VBox.vgrow="ALWAYS">
          <placeholder>
-            <Label styleClass="page-subtitle" text="No events yet" />
+            <VBox styleClass="empty-state">
+               <children>
+                  <FontIcon iconLiteral="mdoal-inbox" styleClass="empty-icon" />
+                  <Label styleClass="empty-title" text="No events yet" />
+                  <Label styleClass="empty-text" text="Sign-ins and account changes will be listed here." wrapText="true" />
+               </children>
+            </VBox>
          </placeholder>
          <columns>
-                  <TableColumn fx:id="sequenceColumn" minWidth="44" prefWidth="50" text="#" />
-                  <TableColumn fx:id="timeColumn" minWidth="150" prefWidth="160" text="Time" />
-                  <TableColumn fx:id="typeColumn" minWidth="150" prefWidth="170" text="Event" />
-                  <TableColumn fx:id="actorColumn" minWidth="80" prefWidth="100" text="By" />
-                  <TableColumn fx:id="subjectColumn" minWidth="80" prefWidth="110" text="Account" />
-                  <TableColumn fx:id="detailColumn" minWidth="150" prefWidth="260" text="Detail" />
+                  <TableColumn fx:id="sequenceColumn" minWidth="44" prefWidth="50" styleClass="numeric" text="#" />
+                  <TableColumn fx:id="timeColumn" minWidth="160" prefWidth="165" text="Time" />
+                  <TableColumn fx:id="typeColumn" minWidth="170" prefWidth="180" text="Event" />
+                  <TableColumn fx:id="actorColumn" minWidth="70" prefWidth="80" text="By" />
+                  <TableColumn fx:id="subjectColumn" minWidth="80" prefWidth="90" text="Account" />
+                  <TableColumn fx:id="detailColumn" minWidth="140" prefWidth="140" text="Detail" />
          </columns>
       </TableView>
    </children>

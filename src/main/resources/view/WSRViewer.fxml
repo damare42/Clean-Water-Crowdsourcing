@@ -18,17 +18,20 @@
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
                      <children>
                         <Label styleClass="page-title" text="Water source reports" />
-                        <Label fx:id="countBadge" styleClass="badge" visible="false" />
+                        <Label fx:id="countBadge" managed="false" minWidth="-Infinity" styleClass="badge, badge-neutral" visible="false" />
                      </children>
                   </HBox>
-                  <Label styleClass="page-subtitle" text="Water sources reported by the community. Double-click a report to see its details." wrapText="true" />
+                  <Label styleClass="page-subtitle" text="Water sources reported by the community. Double-click a report or press Enter to see its details." wrapText="true" />
                </children>
             </VBox>
             <HBox styleClass="page-actions">
                <children>
-                  <Button minWidth="-Infinity" fx:id="detailsButton" mnemonicParsing="false" onAction="#detailsPressed" text="Details">
+                  <Button fx:id="detailsButton" minWidth="-Infinity" mnemonicParsing="false" onAction="#detailsPressed" text="Details">
                      <graphic><FontIcon iconLiteral="mdoal-info" /></graphic>
                      <tooltip><Tooltip text="Show the selected report" /></tooltip>
+                  </Button>
+                  <Button fx:id="newReportButton" managed="false" visible="false" minWidth="-Infinity" mnemonicParsing="false" onAction="#newReportPressed" styleClass="accent" text="New report">
+                     <graphic><FontIcon iconLiteral="mdoal-add_location_alt" /></graphic>
                   </Button>
                </children>
             </HBox>
@@ -39,17 +42,23 @@
       </Label>
       <TableView fx:id="reportTable" onKeyPressed="#tableKeyPressed" VBox.vgrow="ALWAYS">
          <placeholder>
-            <Label styleClass="page-subtitle" text="No reports yet" />
+            <VBox styleClass="empty-state">
+               <children>
+                  <FontIcon iconLiteral="mdoal-inbox" styleClass="empty-icon" />
+                  <Label styleClass="empty-title" text="No reports yet" />
+                  <Label styleClass="empty-text" text="Water sources reported by the community will be listed here." wrapText="true" />
+               </children>
+            </VBox>
          </placeholder>
          <columns>
-                  <TableColumn fx:id="numberColumn" minWidth="60" prefWidth="70" text="Number" />
+                  <TableColumn fx:id="numberColumn" minWidth="40" prefWidth="50" styleClass="numeric" text="#" />
                   <TableColumn fx:id="dateColumn" minWidth="90" prefWidth="100" text="Date" />
-                  <TableColumn fx:id="timeColumn" minWidth="60" prefWidth="70" text="Time" />
-                  <TableColumn fx:id="reporterColumn" minWidth="90" prefWidth="120" text="Reporter" />
-                  <TableColumn fx:id="typeColumn" minWidth="70" prefWidth="90" text="Type" />
-                  <TableColumn fx:id="conditionColumn" minWidth="90" prefWidth="100" text="Condition" />
-                  <TableColumn fx:id="latitudeColumn" minWidth="80" prefWidth="100" text="Latitude" />
-                  <TableColumn fx:id="longitudeColumn" minWidth="90" prefWidth="100" text="Longitude" />
+                  <TableColumn fx:id="timeColumn" minWidth="54" prefWidth="64" text="Time" />
+                  <TableColumn fx:id="reporterColumn" minWidth="76" prefWidth="110" text="Reporter" />
+                  <TableColumn fx:id="typeColumn" minWidth="66" prefWidth="90" text="Type" />
+                  <TableColumn fx:id="conditionColumn" minWidth="92" prefWidth="110" text="Condition" />
+                  <TableColumn fx:id="latitudeColumn" minWidth="76" prefWidth="100" styleClass="numeric" text="Latitude" />
+                  <TableColumn fx:id="longitudeColumn" minWidth="86" prefWidth="110" styleClass="numeric" text="Longitude" />
          </columns>
       </TableView>
    </children>

@@ -1,15 +1,10 @@
 package controller;
 
 import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.util.Callback;
 import model.AccountType;
 import model.WaterPurityCondition;
 import model.WaterSourceCondition;
 import model.security.SecurityEventType;
-
-import java.util.function.Function;
 
 /**
  * Pill-shaped status labels ("badges", styled in css/app.css): which style each
@@ -92,35 +87,5 @@ public final class Badges {
      */
     public static String statusStyle(boolean banned) {
         return banned ? DANGER : SUCCESS;
-    }
-
-    /**
-     * A table cell factory that shows each value as a badge. The cell's text stays the
-     * value's text (so it can still be read and searched), shown through the badge.
-     *
-     * @param style picks the badge style for a value
-     * @param <S> the row type
-     * @param <T> the value type
-     * @return the cell factory
-     */
-    public static <S, T> Callback<TableColumn<S, T>, TableCell<S, T>> cells(Function<T, String> style) {
-        return column -> new TableCell<>() {
-            private final Label badge = badge("", NEUTRAL);
-
-            @Override
-            protected void updateItem(T item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                    return;
-                }
-                badge.setText(item.toString());
-                badge.getStyleClass().setAll(BADGE, style.apply(item));
-                setText(item.toString());
-                setGraphic(badge);
-                setContentDisplay(javafx.scene.control.ContentDisplay.GRAPHIC_ONLY);
-            }
-        };
     }
 }

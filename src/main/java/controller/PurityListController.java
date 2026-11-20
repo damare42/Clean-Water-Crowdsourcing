@@ -13,6 +13,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import model.GeoPoint;
+import model.Permission;
 import model.WaterPurityCondition;
 import model.WaterPurityReport;
 import model.WaterSourceReport;
@@ -65,6 +66,10 @@ public class PurityListController implements Initializable, Page {
     private Button detailsButton;
     @FXML
     private Label message;
+    @FXML
+    private Label countBadge;
+    @FXML
+    private Button newReportButton;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -75,7 +80,7 @@ public class PurityListController implements Initializable, Page {
                 WaterSourceReport.TIME_FORMAT::format);
         Tables.column(reporterColumn, WaterPurityReport::getReporter, Function.identity());
         reporterColumn.setComparator(String.CASE_INSENSITIVE_ORDER);
-        Tables.column(conditionColumn, WaterPurityReport::getCondition, Enum::name);
+        Tables.badgeColumn(conditionColumn, WaterPurityReport::getCondition, Enum::name, Badges::styleOf);
         conditionColumn.setComparator(Comparator.comparing(Enum::name));
         Tables.column(virusColumn, WaterPurityReport::getVirusPpm, WaterPurityReport::formatPpm);
         Tables.column(contaminantColumn, WaterPurityReport::getContaminantPpm, WaterPurityReport::formatPpm);
@@ -92,6 +97,7 @@ public class PurityListController implements Initializable, Page {
             });
             return row;
         });
+        Tables.style(reportTable);
         detailsButton.disableProperty().bind(
                 reportTable.getSelectionModel().selectedItemProperty().isNull());
     }
@@ -103,12 +109,19 @@ public class PurityListController implements Initializable, Page {
     @Override
     public void setApp(Main application) {
         this.application = application;
+        boolean mayReport = application.getLoggedAccount() != null
+                && application.getLoggedAccount().hasPermission(Permission.SUBMIT_PURITY_REPORT);
+        newReportButton.setVisible(mayReport);
+        newReportButton.setManaged(mayReport);
         try {
             reportTable.setItems(FXCollections.observableArrayList(application.getContext()
                     .getPurityReportService().listReports(application.getLoggedAccount())));
             numberColumn.setSortType(TableColumn.SortType.ASCENDING);
             reportTable.getSortOrder().setAll(List.of(numberColumn));
             reportTable.sort();
+            countBadge.setText(String.valueOf(reportTable.getItems().size()));
+            countBadge.setVisible(true);
+            countBadge.setManaged(true);
         } catch (PermissionDeniedException e) {
             showMessage(e.getMessage());
         } catch (DataAccessException e) {
@@ -142,5 +155,13 @@ public class PurityListController implements Initializable, Page {
             event.consume();
             detailsPressed();
         }
+    }
+
+    /**
+     * Opens the form for a new report.
+     */
+    @FXML
+    private void newReportPressed() {
+        application.gotoPurityReport();
     }
 }

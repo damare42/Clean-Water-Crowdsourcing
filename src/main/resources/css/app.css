@@ -129,7 +129,8 @@
     -fx-spacing: 16px;
 }
 
-.page.compact {
+.page.compact,
+.shell:compact .page {
     -fx-padding: 16px;
 }
 
@@ -445,9 +446,9 @@
 
 /* ----------------------------------------------------------------- toasts */
 .toast-layer {
-    -fx-padding: 16px;
+    -fx-padding: 16px 16px 28px 16px;
     -fx-spacing: 8px;
-    -fx-alignment: top-right;
+    -fx-alignment: bottom-right;
 }
 
 .toast-layer > .notification {
@@ -746,4 +747,111 @@
 
 .selection-chip .ikonli-font-icon {
     -fx-icon-color: -cwc-brand-700;
+}
+
+/* ---------------------------------------------------------------- details */
+.details-grid {
+    -fx-hgap: 16px;
+    -fx-vgap: 0;
+    -fx-background-color: -cwc-border-muted, -cwc-surface;
+    -fx-background-insets: 0, 1px;
+    -fx-background-radius: 8px, 7px;
+    -fx-padding: 4px 14px 4px 14px;
+}
+
+.details-grid .detail-key,
+.details-grid .detail-value {
+    -fx-padding: 7px 0 7px 0;
+    -fx-border-color: transparent transparent -cwc-border-muted transparent;
+    -fx-max-width: infinity;
+}
+
+.details-grid .last {
+    -fx-border-color: transparent;
+}
+
+.details-grid .detail-key {
+    -fx-text-fill: -cwc-text-muted;
+}
+
+.details-grid .detail-value {
+    -fx-text-fill: -cwc-text;
+    -fx-font-weight: bold;
+}
+
+/* ----------------------------------------------------------------- tables */
+.table-view .column-header .label {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.table-view .table-cell.numeric {
+    -fx-alignment: center-right;
+}
+
+.table-view .column-header.numeric > .label {
+    -fx-alignment: center-right;
+}
+
+.table-view {
+    -fx-font-size: 13px;
+}
+
+.table-view .table-cell {
+    -fx-padding: 6px 6px 6px 6px;
+}
+
+.table-view > .column-header-background .column-header .label {
+    -fx-padding: 0 6px 0 6px;
+    /* A narrow column wraps its header onto two lines instead of cutting it off. */
+    -fx-wrap-text: true;
+}
+
+.table-view {
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+}
+
+/* ---------------------------------------------------------------- history */
+.filter-grid {
+    -fx-hgap: 16px;
+    -fx-vgap: 12px;
+}
+
+.history-chart .chart-series-line {
+    -fx-stroke: -cwc-brand-600;
+    -fx-stroke-width: 3px;
+}
+
+.history-chart .chart-line-symbol {
+    -fx-background-color: -cwc-brand-700, white;
+    -fx-background-insets: 0, 2px;
+    -fx-background-radius: 6px;
+    -fx-padding: 6px;
+}
+
+.history-chart .chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.history-chart .chart-vertical-grid-lines {
+    -fx-stroke: transparent;
+}
+
+.history-chart .chart-horizontal-grid-lines {
+    -fx-stroke: -cwc-border-muted;
+}
+
+.history-chart .chart-alternative-row-fill,
+.history-chart .chart-alternative-column-fill {
+    -fx-fill: transparent;
+}
+
+.history-chart .chart-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.history-chart .axis-label {
+    -fx-text-fill: -cwc-text-muted;
 }

@@ -8,6 +8,9 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import model.ReportField;
 import model.Report;
+import model.WaterPurityReport;
+import model.WaterSourceReport;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.net.URL;
 import java.time.ZoneId;
@@ -23,6 +26,10 @@ public class ReportDetailsController implements Initializable {
     private Label title;
     @FXML
     private GridPane fields;
+    @FXML
+    private Label conditionBadge;
+    @FXML
+    private FontIcon kindIcon;
 
     private Main application;
     private Stage dialogStage;
@@ -44,11 +51,30 @@ public class ReportDetailsController implements Initializable {
         this.report = report;
         title.setText(report.getTitle());
         List<ReportField> reportFields = report.fields(ZoneId.systemDefault());
+        if (report instanceof WaterPurityReport) {
+            kindIcon.setIconLiteral("mdomz-science");
+        }
+        Object condition = report instanceof WaterSourceReport source ? source.getCondition()
+                : report instanceof WaterPurityReport purity ? purity.getCondition() : null;
+        if (condition != null) {
+            conditionBadge.setText(condition.toString());
+            conditionBadge.getStyleClass().add(Badges.styleOf(condition));
+            conditionBadge.setVisible(true);
+            conditionBadge.setManaged(true);
+        }
         for (int row = 0; row < reportFields.size(); row++) {
             ReportField field = reportFields.get(row);
+            Label key = new Label(field.label());
+            key.getStyleClass().add("detail-key");
             Label value = new Label(field.value());
             value.setId("field" + row);
-            fields.addRow(row, new Label(field.label() + ":"), value);
+            value.getStyleClass().add("detail-value");
+            value.setWrapText(true);
+            if (row == reportFields.size() - 1) {
+                key.getStyleClass().add("last");
+                value.getStyleClass().add("last");
+            }
+            fields.addRow(row, key, value);
         }
     }
 
