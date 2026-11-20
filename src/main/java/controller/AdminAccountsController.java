@@ -1,6 +1,7 @@
 package controller;
 
 import fxapp.Main;
+import fxapp.Theme;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -163,6 +164,7 @@ public class AdminAccountsController implements Initializable, Page {
         confirm.setTitle("Delete account");
         confirm.setHeaderText("Delete account");
         confirm.initOwner(accountTable.getScene().getWindow());
+        Theme.style(confirm);
         Optional<ButtonType> answer = confirm.showAndWait();
         if (answer.isEmpty() || answer.get() != ButtonType.OK) {
             return;

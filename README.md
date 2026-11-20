@@ -52,7 +52,8 @@ The map uses [Leaflet](https://leafletjs.com) 1.9.4, bundled with the app under
 `src/main/resources/web/leaflet/` (BSD-2-Clause, see the `LICENSE` file there; taken
 unmodified from the npm package `leaflet@1.9.4`). Only the map tiles come from the
 network, from `tile.openstreetmap.org`. Without a connection the map background stays
-blank, but pins, popups, the report list and everything else keep working.
+blank (a "Map tiles unavailable" notice says so), but pins, popups, the report list and
+everything else keep working.
 
 The map page carries a Content-Security-Policy that blocks network requests from
 scripts, frames, workers, plug-ins, forms and `<base>`. It cannot limit where scripts,
@@ -79,6 +80,16 @@ the top of `src/main/resources/web/map.js`).
 
 The OpenJFX libraries are downloaded by Maven for your platform; no separate JavaFX
 install is needed.
+
+### Look and feel
+
+The UI uses the [AtlantaFX](https://github.com/mkpaz/atlantafx) PrimerLight theme with the
+app's own stylesheet on top (`src/main/resources/css/app.css`), and
+[Ikonli](https://kordamp.org/ikonli/) Material Design icons. Both come from Maven and
+bundle their fonts and stylesheets; nothing is downloaded at run time. AtlantaFX is pinned
+to **2.0.1** on purpose: it is the last release built for Java 17 and JavaFX 20, so it runs
+on this project's Java 17 / JavaFX 21 (2.1.0 needs Java 21 and JavaFX 23, 3.0.0 needs
+Java 25 and JavaFX 27).
 
 ## Build, run and test
 
@@ -266,7 +277,7 @@ can be recorded.
 ## Project layout
 
 ```
-pom.xml                         Maven build (Java 17, OpenJFX, JUnit 5)
+pom.xml                         Maven build (Java 17, OpenJFX, AtlantaFX, Ikonli, JUnit 5)
 src/main/java/fxapp/            Application entry point (fxapp.Main) and scene navigation
 src/main/java/controller/       JavaFX controllers, one per screen; LeafletMap drives the map page
 src/main/java/fxapp/AppContext  Builds the services and opens the database (composition root)
@@ -278,6 +289,7 @@ src/main/java/model/security    PBKDF2 password hashing, security events, lockou
 src/main/java/model/service     AuthService, AccountService, ReportService, PurityReportService,
                                 SecurityLog, permission checks (AccessControl)
 src/main/resources/view/        FXML layouts, loaded as /view/<Name>.fxml
+src/main/resources/css/app.css  App stylesheet (brand colours and components) on top of AtlantaFX
 src/main/resources/web/         Map page (map.html, map.js, map.css) and bundled Leaflet
 src/test/java/                  JUnit 5 tests (repository contract tests run against
                                 both the in-memory and the SQLite implementation)

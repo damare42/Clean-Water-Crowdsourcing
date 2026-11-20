@@ -20,6 +20,13 @@
         <javafx.version>21.0.5</javafx.version>
         <junit.version>5.10.3</junit.version>
         <sqlite-jdbc.version>3.54.1.0</sqlite-jdbc.version>
+        <!-- AtlantaFX is pinned to 2.0.1: it is the last release built for Java 17 (class
+             file version 61) against JavaFX 20, so it runs on this project's Java 17 /
+             JavaFX 21. 2.1.0 needs Java 21 (JavaFX 23) and 3.0.0 needs Java 25 (JavaFX 27). -->
+        <atlantafx.version>2.0.1</atlantafx.version>
+        <!-- Ikonli icon fonts (Material Design 2 pack); the fonts are bundled in the jars,
+             nothing is downloaded at run time. -->
+        <ikonli.version>12.4.0</ikonli.version>
 
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
@@ -55,6 +62,21 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-web</artifactId>
             <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.mkpaz</groupId>
+            <artifactId>atlantafx-base</artifactId>
+            <version>${atlantafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-javafx</artifactId>
+            <version>${ikonli.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-material2-pack</artifactId>
+            <version>${ikonli.version}</version>
         </dependency>
         <dependency>
             <groupId>org.xerial</groupId>

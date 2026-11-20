@@ -50,6 +50,8 @@ public class Main extends Application {
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
     /** System property that asks for the first administrator to be created at start-up. */
     public static final String BOOTSTRAP_ADMIN_PROPERTY = "cwc.bootstrapAdmin";
+    /** The main window's title. */
+    public static final String APP_TITLE = "Clean Water Crowdsourcing";
     /** the main container for the application window */
     private Stage stage;
     private AppContext context;
@@ -65,6 +67,7 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        Theme.install();
         if (context == null && !openContext()) {
             Platform.exit();
             return;
@@ -76,7 +79,7 @@ public class Main extends Application {
         });
         try {
             stage = primaryStage;
-            stage.setTitle("CWC");
+            stage.setTitle(APP_TITLE);
             Rectangle2D screen = Screen.getPrimary().getVisualBounds();
             stage.setMinWidth(Math.min(MINIMUM_WINDOW_WIDTH, screen.getWidth()));
             stage.setMinHeight(Math.min(MINIMUM_WINDOW_HEIGHT, screen.getHeight()));
@@ -133,6 +136,7 @@ public class Main extends Application {
                         "The administrator account " + admin.getId() + " was created. You can log in now.");
                 done.setHeaderText("Administrator created");
                 done.initOwner(stage);
+                Theme.style(done);
                 done.show();
             });
             return controller.getCreated();
@@ -157,7 +161,8 @@ public class Main extends Application {
             LOGGER.log(Level.SEVERE, "Could not open the database" + where, e);
             Alert alert = new Alert(Alert.AlertType.ERROR,
                     "Could not open the database" + where + ".\n" + e.getMessage());
-            alert.setHeaderText("Clean Water Crowdsourcing cannot start");
+            alert.setHeaderText(APP_TITLE + " cannot start");
+            Theme.style(alert);
             alert.showAndWait();
             return false;
         }
@@ -375,7 +380,7 @@ public class Main extends Application {
             Rectangle2D screen = Screen.getPrimary().getVisualBounds();
             double width = Math.min(INITIAL_WINDOW_WIDTH, screen.getWidth() * MAXIMUM_SCREEN_SHARE);
             double height = Math.min(INITIAL_WINDOW_HEIGHT, screen.getHeight() * MAXIMUM_SCREEN_SHARE);
-            stage.setScene(new Scene(root, width, height));
+            stage.setScene(Theme.style(new Scene(root, width, height)));
         } else {
             scene.setRoot(root);
             // Style and lay the page out now rather than on the next pulse, so it is
@@ -391,7 +396,7 @@ public class Main extends Application {
         dialog.setTitle(title);
         dialog.initModality(Modality.WINDOW_MODAL);
         dialog.initOwner(stage);
-        dialog.setScene(new Scene(root));
+        dialog.setScene(Theme.style(new Scene(root)));
         return dialog;
     }
 
