@@ -6,6 +6,7 @@ import controller.LeafletMap;
 import controller.CreateAdminController;
 import controller.MapPickerController;
 import controller.Page;
+import controller.ProfileController;
 import controller.ReportDetailsController;
 import controller.ShellController;
 import javafx.application.Application;
@@ -557,7 +558,7 @@ public class Main extends Application {
      * Shows the location setting (the Privacy section of the profile page).
      */
     public void gotoLocationSettings() {
-        gotoProfile();
+        this.<ProfileController>showPage(PAGE_PROFILE).ifPresent(ProfileController::showPrivacy);
     }
 
     private static FXMLLoader load(String fxml) throws IOException {

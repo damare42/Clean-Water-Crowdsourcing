@@ -54,4 +54,5 @@ REST server + web/mobile client so reports are actually shared between users.
 - [x] Phase 3
 - [x] Cleanup (pre-PR polish: security-log wording and fallback, report-number permission check, admin-dialog close guard, docs)
 - [x] UI/UX overhaul (map painting fix and one-scene window, AtlantaFX 2.0.1 theme with Ikonli icons and css/app.css, sidebar shell with role-aware navigation, inline sign-in, remodelled forms, tables, dialogs and map page)
+- [x] Approximate location at sign-in (IP lookup with time-zone fallback, privacy setting, schema v3 `app_settings`); open item: verify the default provider's live response on a networked machine
 - [ ] Phase 4 (decision pending)

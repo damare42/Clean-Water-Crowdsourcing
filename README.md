@@ -19,7 +19,11 @@ After signing in, a sidebar on the left shows the pages your account type allows
 sidebar (your name and role) has **Profile** and **Log out**. The window can be resized
 freely (down to 960x640) and keeps its size when you move between pages.
 
-- **Map**: every water source report is a pin on an OpenStreetMap map. Workers and
+- **Map**: when you sign in, the map starts at the approximate location of this computer
+  (see [Privacy](#privacy)), shown as a dot with a circle for how rough it is, and a note
+  at the bottom right says where it came from. **Locate me** looks it up again and
+  centres the map on it; **All reports** zooms out to show every report. Every water
+  source report is a pin on an OpenStreetMap map. Workers and
   managers also see water purity reports, drawn as round teal markers (a legend explains
   the two kinds). Click a marker to see its fields; **Details** in the popup opens the
   full report. The **Reports** panel on the right lists the same reports as cards, newest
@@ -55,7 +59,8 @@ freely (down to 960x640) and keeps its size when you move between pages.
 - **Security log** (administrators): the newest 1000 security events, newest first;
   see [Security log](#security-log).
 - **Profile** (user menu): change your name, e-mail, phone and address; the account type
-  and username cannot be changed.
+  and username cannot be changed. Its **Privacy** section sets how this computer's
+  approximate location is found (see [Privacy](#privacy)).
 
 ### Map and network
 
@@ -74,6 +79,9 @@ the comment in `map.html`). The Java side compensates: the page only gets data a
 shown with `textContent`, pop-ups are blocked, any navigation away from the bundled page
 is reverted, and the bridge into Java is only given to that exact page.
 
+The approximate location at sign-in is looked up with one HTTPS request to
+`ipapi.co` (see [Privacy](#privacy)); everything else works without it.
+
 Map data is &copy; [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors;
 the attribution is always shown on the map, and its links open in the system browser.
 The OpenStreetMap tile servers are run by volunteers for light use under their
@@ -81,6 +89,46 @@ The OpenStreetMap tile servers are run by volunteers for light use under their
 identifies itself with a `CleanWaterCrowdsourcing` user-agent suffix. A deployment with
 many users should switch to a commercial or self-hosted tile service (the tile URL is at
 the top of `src/main/resources/web/map.js`).
+
+## Privacy
+
+When someone signs in, the map starts at the **approximate** location of this computer.
+The app never asks the operating system or a browser for a precise position. How the
+location is found is set in **Profile → Privacy**; the setting applies to everyone who
+uses the app on this computer:
+
+- **Look up using my internet address** (the default): the app sends one HTTPS `GET` of
+  `https://ipapi.co/json/` with only a `User-Agent: CleanWaterCrowdsourcing/0.1 (JavaFX
+  desktop app)` and an `Accept: application/json` header. No account name or other data,
+  no cookies, no referrer and no query parameters are sent, and redirects are not
+  followed. ipapi.co receives your **IP address** (as with any request) and answers with
+  an approximate city and coordinates. This happens at most once a day: the answer
+  (coordinates, place name and time) is kept in the app's database for 24 hours; **Locate
+  me** asks again (but reuses an answer less than a minute old). If the lookup fails, the
+  time zone is used instead.
+- **Use my time zone only**: the position of the computer's time zone (for example New
+  York for `America/New_York`) from a table bundled with the app (generated from the
+  public-domain IANA tzdata by `tools/gen-zone-coordinates.py`). Nothing leaves the
+  computer.
+- **Off**: no location; the map shows all reports as before.
+
+Switching to time zone or Off deletes the kept answer. The lookup can also be switched
+off for an installation, whatever the setting says, with `-Dcwc.geo.url=off` (with
+`mvn javafx:run -Dcwc.geo.url=off`); the Privacy section then shows the option as
+disabled. `-Dcwc.geo.url=<https URL>` uses another service; the app understands the
+answers of ipapi.co, [ipwho.is](https://ipwho.is/) and [ipinfo.io](https://ipinfo.io/)
+(`mvn javafx:run` passes `default` when nothing is given, which means ipapi.co).
+
+ipapi.co's free service, used without an API key, is meant for light use (about 1,000
+requests a day) under its [terms](https://ipapi.co/terms/); the default suits a
+non-commercial, light deployment. A larger deployment should use a paid plan or another
+provider.
+
+**Open item:** the response formats were taken from the providers' documentation and
+tested against local copies only (the providers could not be reached from the build
+environment). Before a release, run `./mvnw javafx:run` once on a networked computer and
+check that the map centres near the real location with "(from your IP address)"; if the
+default provider has changed its answer, switch the default to ipwho.is or ipinfo.io.
 
 ## Prerequisites
 
@@ -146,7 +194,7 @@ To start over, quit the app and delete the file. The schema version is kept in
 SQLite's `PRAGMA user_version`; the app upgrades older files on start and refuses
 to open a file written by a newer version.
 
-Tables (schema version 2):
+Tables (schema version 3):
 
 - `accounts`: `username_key` (lower-case id, primary key), `username` (as entered),
   `account_type`, `password_hash`, `first_name`, `last_name`, `email`, `phone`, `address`,
@@ -161,7 +209,12 @@ Tables (schema version 2):
   `actor`, `subject`, `detail`. Triggers reject every UPDATE and DELETE, so the log is
   append-only.
 
-Version 1 files are upgraded in place on start; their accounts and reports are kept.
+- `app_settings` (version 3): `key` (primary key, not empty), `value`. Settings of this
+  installation: `location.mode` (`IP_LOOKUP`, `TIME_ZONE` or `OFF`) and
+  `location.cache` (the last IP lookup result, `lat|lon|accuracyKm|epochMillis|place`,
+  used for 24 hours and checked again when read).
+
+Version 1 and 2 files are upgraded in place on start; their accounts and reports are kept.
 
 CHECK constraints keep rows consistent with the Java code: `account_type`,
 `water_type`, `water_condition`, `overall_condition` and `event_type` only accept the
@@ -295,13 +348,16 @@ src/main/java/controller/       JavaFX controllers, one per screen; ShellControl
 src/main/java/fxapp/AppContext  Builds the services and opens the database (composition root)
 src/main/java/model/            Accounts, roles/permissions, validation, water source and
                                 purity reports, coordinates and distances (GeoPoint)
-src/main/java/model/map         Map markers and their JSON for the map page
+src/main/java/model/map         Map markers and the user's location as JSON for the map page
+src/main/java/model/geo         Approximate location: IP lookup, strict JSON reader, time-zone
+                                table, LocationService (mode, cache, fallback chain)
 src/main/java/model/persistence Repository interfaces with SQLite and in-memory implementations
 src/main/java/model/security    PBKDF2 password hashing, security events, lockout policy
 src/main/java/model/service     AuthService, AccountService, ReportService, PurityReportService,
                                 SecurityLog, permission checks (AccessControl)
 src/main/resources/view/        FXML layouts, loaded as /view/<Name>.fxml
 src/main/resources/css/app.css  App stylesheet (brand colours and components) on top of AtlantaFX
+src/main/resources/geo/         Time-zone positions (generated by tools/gen-zone-coordinates.py)
 src/main/resources/web/         Map page (map.html, map.js, map.css) and bundled Leaflet
 src/test/java/                  JUnit 5 tests (repository contract tests run against
                                 both the in-memory and the SQLite implementation)
