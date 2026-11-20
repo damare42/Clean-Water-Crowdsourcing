@@ -53,6 +53,12 @@ public final class LocationService {
     private final ZoneId zone;
     private final Clock clock;
     private final GeoConfig config;
+    /**
+     * Makes a mode change and the caching of a lookup result atomic with respect to each
+     * other, so that leaving IP_LOOKUP while a lookup runs can never leave a cached
+     * result behind. Never held during the network call.
+     */
+    private final Object lock = new Object();
 
     /**
      * @param settings where the mode and the cached result are kept
@@ -112,10 +118,12 @@ public final class LocationService {
     public void setMode(Account actor, LocationMode mode) {
         Objects.requireNonNull(actor, "A signed-in account is needed to change the location setting");
         Objects.requireNonNull(mode, "mode");
-        if (mode != LocationMode.IP_LOOKUP) {
-            settings.remove(CACHE_KEY);
+        synchronized (lock) {
+            if (mode != LocationMode.IP_LOOKUP) {
+                settings.remove(CACHE_KEY);
+            }
+            settings.put(MODE_KEY, mode.name());
         }
-        settings.put(MODE_KEY, mode.name());
         LOGGER.log(Level.INFO, "{0} set the location setting to {1}", new Object[]{actor.getId(), mode});
     }
 
@@ -151,11 +159,19 @@ public final class LocationService {
             }
             Optional<ApproximateLocation> found = provider.lookup();
             if (found.isPresent()) {
-                if (effectiveMode() != LocationMode.IP_LOOKUP) {
-                    // The setting changed while the lookup ran: do not keep or use the result.
-                    return effectiveMode() == LocationMode.OFF ? Optional.empty() : fromTimeZone();
+                LocationMode now;
+                synchronized (lock) {
+                    // Re-check and cache under the lock: a concurrent setMode either runs
+                    // before (and the result is dropped) or after (and deletes the cache).
+                    now = effectiveMode();
+                    if (now == LocationMode.IP_LOOKUP) {
+                        writeCache(found.get());
+                    }
                 }
-                writeCache(found.get());
+                if (now != LocationMode.IP_LOOKUP) {
+                    // The setting changed while the lookup ran: do not keep or use the result.
+                    return now == LocationMode.OFF ? Optional.empty() : fromTimeZone();
+                }
                 return found;
             }
         }

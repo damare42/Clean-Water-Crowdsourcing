@@ -4,6 +4,7 @@ import model.Account;
 import model.AccountType;
 import model.GeoPoint;
 import model.persistence.InMemorySettingsRepository;
+import model.persistence.SettingsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import testutil.MutableClock;
@@ -228,5 +229,47 @@ class LocationServiceTest {
         holder[0] = new LocationService(settings, switchingProvider, ZONES, NEW_YORK_ZONE, clock, GeoConfig.of(null));
         assertEquals(Optional.empty(), holder[0].locate(false));
         assertEquals(Optional.empty(), settings.get(LocationService.CACHE_KEY));
+    }
+
+    @Test
+    void switchingOffJustBeforeTheCacheWriteLeavesNoCachedLocation() throws InterruptedException {
+        LocationService[] holder = new LocationService[1];
+        Thread[] switcher = new Thread[1];
+        // Starts setMode(OFF) on another thread at the moment locate() writes the cache,
+        // and gives it time to run first if nothing stops it.
+        SettingsRepository hooked = new SettingsRepository() {
+            @Override
+            public Optional<String> get(String key) {
+                return settings.get(key);
+            }
+
+            @Override
+            public void remove(String key) {
+                settings.remove(key);
+            }
+
+            @Override
+            public void put(String key, String value) {
+                if (key.equals(LocationService.CACHE_KEY) && switcher[0] == null) {
+                    switcher[0] = new Thread(() -> holder[0].setMode(admin, LocationMode.OFF));
+                    switcher[0].start();
+                    try {
+                        switcher[0].join(300);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                settings.put(key, value);
+            }
+        };
+        holder[0] = new LocationService(hooked, provider, ZONES, NEW_YORK_ZONE, clock, GeoConfig.of(null));
+
+        holder[0].locate(false);
+        assertTrue(switcher[0] != null, "the cache write should have been attempted");
+        switcher[0].join(5000);
+
+        assertEquals(LocationMode.OFF, holder[0].mode());
+        assertEquals(Optional.empty(), settings.get(LocationService.CACHE_KEY),
+                "Off must never leave a cached location behind");
     }
 }
