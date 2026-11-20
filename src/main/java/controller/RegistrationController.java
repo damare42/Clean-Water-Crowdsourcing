@@ -12,9 +12,11 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import model.Account;
 import model.AccountType;
+import model.Validation;
 import model.service.AuthService;
 
 import java.net.URL;
@@ -27,7 +29,7 @@ import java.util.logging.Logger;
  * Created by Sheng on 9/19/16.
  * Controls the registration page.
  */
-public class RegistrationController extends AnchorPane implements Initializable, Page {
+public class RegistrationController implements Initializable, Page {
     private static final Logger LOGGER = Logger.getLogger(RegistrationController.class.getName());
     static final String MSG_AUTO_LOGIN_FAILED =
             "Your account was created, but you could not be logged in. Please log in.";
@@ -55,6 +57,16 @@ public class RegistrationController extends AnchorPane implements Initializable,
     private Button registerButton;
     @FXML
     private Button backButton;
+    @FXML
+    private HBox registerPage;
+    @FXML
+    private Region hero;
+    @FXML
+    private HBox compactBrand;
+    @FXML
+    private Label passwordHelp;
+
+    private final FieldErrors fieldErrors = new FieldErrors();
 
     private final ObservableList<AccountType> accountTypeList =
             FXCollections.observableArrayList(AccountType.selfRegistrable());
@@ -71,6 +83,17 @@ public class RegistrationController extends AnchorPane implements Initializable,
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         accountTypeBox.setItems(accountTypeList);
+        passwordHelp.setText("At least " + Validation.MIN_PASSWORD_LENGTH + " letters or digits");
+        WelcomeController.responsiveHero(registerPage, hero, compactBrand);
+        fieldErrors.on(Validation.MSG_INVALID_ID, id)
+                .on(Validation.MSG_ID_TAKEN, id)
+                .on(Validation.MSG_ACCOUNT_TYPE_REQUIRED, accountTypeBox)
+                .on(Validation.MSG_INVALID_NAME, firstname, lastname)
+                .on(Validation.MSG_INVALID_EMAIL, email)
+                .on(Validation.MSG_EMAIL_MISMATCH, emailConfirm)
+                .on(Validation.MSG_INVALID_PASSWORD, password)
+                .on(Validation.MSG_PASSWORD_MISMATCH, passwordConfirm);
+        javafx.application.Platform.runLater(id::requestFocus);
     }
 
     /**
@@ -106,7 +129,9 @@ public class RegistrationController extends AnchorPane implements Initializable,
         setBusy(false);
         if (!application.registrationLogging(account.getId())) {
             showError(MSG_AUTO_LOGIN_FAILED);
+            return;
         }
+        application.showToast("Welcome, " + account.getFname() + "! Your account is ready.");
     }
 
     private void registrationFailed(Throwable error) {
@@ -125,12 +150,13 @@ public class RegistrationController extends AnchorPane implements Initializable,
     }
 
     private void showError(String text) {
-        errorMessage.setText(text);
-        errorMessage.setVisible(true);
+        Banners.show(errorMessage, text, Banners.Kind.DANGER);
+        fieldErrors.show(text);
     }
 
     /**
-     * Registers when ENTER is pressed
+     * Registers when ENTER is pressed on the Create account button (ENTER in a field
+     * fires it as the default button).
      * @param event the key event
      */
     @FXML

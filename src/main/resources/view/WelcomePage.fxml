@@ -1,23 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ButtonBar?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/8.0.65" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.WelcomeController">
+<!-- Welcome page with the sign-in form: brand panel on the left (hidden in narrow
+     windows), sign-in card on the right. -->
+<HBox fx:id="welcomePage" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.WelcomeController">
    <children>
-      <ButtonBar layoutX="235.0" layoutY="280.0" prefHeight="40.0" prefWidth="300.0">
-        <buttons>
-          <Button mnemonicParsing="false" onAction="#loginPressed" onKeyPressed="#keyLoginPressed" prefHeight="27.0" prefWidth="401.0" text="Login" />
-            <Button layoutX="140.0" layoutY="17.0" mnemonicParsing="false" onAction="#registrationPressed" onKeyPressed="#keyRegistrationPressed" prefHeight="27.0" prefWidth="146.0" text="Registration" />
-        </buttons>
-      </ButtonBar>
-      <Label layoutX="240.0" layoutY="137.0" text="Clean Water Map">
-         <font>
-            <Font name="Helvetica" size="41.0" />
-         </font>
-      </Label>
+      <fx:include fx:id="hero" source="AuthHero.fxml" />
+      <ScrollPane fitToHeight="true" fitToWidth="true" styleClass="edge-to-edge" HBox.hgrow="ALWAYS">
+         <content>
+            <StackPane styleClass="auth-side">
+               <children>
+                  <VBox maxHeight="-Infinity" minHeight="-Infinity" maxWidth="380.0" prefWidth="380.0" styleClass="auth-card">
+                     <children>
+                        <HBox fx:id="compactBrand" styleClass="compact-brand">
+                           <children>
+                              <FontIcon iconLiteral="mdomz-opacity" />
+                              <Label text="Clean Water Crowdsourcing" />
+                           </children>
+                        </HBox>
+                        <VBox styleClass="card-header">
+                           <children>
+                              <Label styleClass="card-title" text="Sign in" />
+                              <Label styleClass="card-subtitle" text="Welcome back. Sign in to see the water map." wrapText="true" />
+                           </children>
+                        </VBox>
+                        <Label fx:id="errorMessage" managed="false" maxWidth="Infinity" styleClass="banner, banner-danger" visible="false" wrapText="true">
+                           <graphic><FontIcon iconLiteral="mdoal-error_outline" /></graphic>
+                        </Label>
+                        <VBox styleClass="field">
+                           <children>
+                              <Label labelFor="$accountId" styleClass="field-label" text="Username" />
+                              <TextField fx:id="accountId" accessibleText="Username" promptText="Your username" />
+                           </children>
+                        </VBox>
+                        <VBox styleClass="field">
+                           <children>
+                              <Label labelFor="$password" styleClass="field-label" text="Password" />
+                              <PasswordField fx:id="password" accessibleText="Password" promptText="Your password" />
+                           </children>
+                        </VBox>
+                        <Button fx:id="signInButton" defaultButton="true" maxWidth="Infinity" mnemonicParsing="false" onAction="#signInPressed" styleClass="accent" text="Sign in" />
+                        <HBox styleClass="auth-footer">
+                           <children>
+                              <Label text="New here?" />
+                              <Button fx:id="createAccountButton" mnemonicParsing="false" onAction="#registrationPressed" styleClass="link-button" text="Create an account" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+               </children>
+            </StackPane>
+         </content>
+      </ScrollPane>
    </children>
-</AnchorPane>
+</HBox>

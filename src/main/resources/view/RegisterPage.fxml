@@ -4,44 +4,113 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
-<?import javafx.scene.layout.RowConstraints?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" onKeyPressed="#registerEntered" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/8.0.65" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.RegistrationController">
+<!-- Registration: brand panel on the left (hidden in narrow windows), the form card on
+     the right with the labels above the fields. -->
+<HBox fx:id="registerPage" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.RegistrationController">
    <children>
-      <Label layoutX="351.0" layoutY="139.0" prefHeight="26.0" prefWidth="93.0" text="Registration">
-         <font>
-            <Font size="16.0" />
-         </font></Label>
-      <Label fx:id="errorMessage" layoutX="316.0" layoutY="168.0" text="Username is already taken" textFill="#d02424" visible="false" />
-      <GridPane layoutX="197.0" layoutY="185.0" prefHeight="218.0" prefWidth="405.0">
-        <columnConstraints>
-            <ColumnConstraints hgrow="SOMETIMES" maxWidth="184.0" minWidth="10.0" prefWidth="184.0" />
-          <ColumnConstraints hgrow="SOMETIMES" maxWidth="103.0" minWidth="10.0" prefWidth="27.0" />
-          <ColumnConstraints hgrow="SOMETIMES" maxWidth="224.0" minWidth="10.0" prefWidth="195.0" />
-        </columnConstraints>
-        <rowConstraints>
-            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-        </rowConstraints>
-         <children>
-            <TextField fx:id="id" layoutX="10.0" layoutY="101.0" promptText="Username" />
-            <ComboBox fx:id="accountTypeBox" prefHeight="26.0" prefWidth="195.0" promptText="Select Account Type" GridPane.columnIndex="2" />
-            <TextField fx:id="firstname" promptText="First name" GridPane.rowIndex="1" />
-            <TextField fx:id="lastname" layoutX="90.0" layoutY="37.0" promptText="Last name" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-            <TextField fx:id="email" promptText="Email address" GridPane.rowIndex="2" />
-            <TextField fx:id="emailConfirm" promptText="Confirm email" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-            <PasswordField fx:id="password" prefHeight="0.0" prefWidth="174.0" promptText="Password" GridPane.rowIndex="3" />
-            <PasswordField fx:id="passwordConfirm" promptText="Confirm password" GridPane.columnIndex="2" GridPane.rowIndex="3" />
-         </children>
-      </GridPane>
-      <Button fx:id="backButton" layoutX="321.0" layoutY="431.0" mnemonicParsing="false" onAction="#backPressed" onKeyPressed="#backKeyPressed" prefHeight="26.0" prefWidth="67.0" text="Back" />
-      <Button fx:id="registerButton" layoutX="401.0" layoutY="431.0" mnemonicParsing="false" onAction="#registerPressed" onKeyPressed="#registerEntered" text="Register" />
+      <fx:include fx:id="hero" source="AuthHero.fxml" />
+      <ScrollPane fitToHeight="true" fitToWidth="true" styleClass="edge-to-edge" HBox.hgrow="ALWAYS">
+         <content>
+            <StackPane styleClass="auth-side">
+               <children>
+                  <VBox maxHeight="-Infinity" minHeight="-Infinity" maxWidth="560.0" prefWidth="560.0" styleClass="auth-card">
+                     <children>
+                        <HBox fx:id="compactBrand" styleClass="compact-brand">
+                           <children>
+                              <FontIcon iconLiteral="mdomz-opacity" />
+                              <Label text="Clean Water Crowdsourcing" />
+                           </children>
+                        </HBox>
+                        <VBox styleClass="card-header">
+                           <children>
+                              <Label styleClass="card-title" text="Create your account" />
+                              <Label styleClass="card-subtitle" text="Join the community and start reporting water sources." wrapText="true" />
+                           </children>
+                        </VBox>
+                        <Label fx:id="errorMessage" managed="false" maxWidth="Infinity" styleClass="banner, banner-danger" visible="false" wrapText="true">
+                           <graphic><FontIcon iconLiteral="mdoal-error_outline" /></graphic>
+                        </Label>
+                        <GridPane styleClass="form-grid">
+                           <columnConstraints>
+                              <ColumnConstraints hgrow="ALWAYS" minWidth="150.0" percentWidth="50.0" />
+                              <ColumnConstraints hgrow="ALWAYS" minWidth="150.0" percentWidth="50.0" />
+                           </columnConstraints>
+                           <children>
+                              <VBox styleClass="field">
+                                 <children>
+                                    <Label labelFor="$id" styleClass="field-label" text="Username" />
+                                    <TextField fx:id="id" accessibleText="Username" promptText="e.g. alice" />
+                                 </children>
+                              </VBox>
+                              <VBox styleClass="field" GridPane.columnIndex="1">
+                                 <children>
+                                    <Label labelFor="$accountTypeBox" styleClass="field-label" text="Account type" />
+                                    <ComboBox fx:id="accountTypeBox" accessibleText="Account type" maxWidth="Infinity" promptText="Select account type" />
+                                 </children>
+                              </VBox>
+                              <VBox styleClass="field" GridPane.rowIndex="1">
+                                 <children>
+                                    <Label labelFor="$firstname" styleClass="field-label" text="First name" />
+                                    <TextField fx:id="firstname" accessibleText="First name" />
+                                 </children>
+                              </VBox>
+                              <VBox styleClass="field" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                 <children>
+                                    <Label labelFor="$lastname" styleClass="field-label" text="Last name" />
+                                    <TextField fx:id="lastname" accessibleText="Last name" />
+                                 </children>
+                              </VBox>
+                              <VBox styleClass="field" GridPane.rowIndex="2">
+                                 <children>
+                                    <Label labelFor="$email" styleClass="field-label" text="Email" />
+                                    <TextField fx:id="email" accessibleText="Email" promptText="name@example.com" />
+                                 </children>
+                              </VBox>
+                              <VBox styleClass="field" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                                 <children>
+                                    <Label labelFor="$emailConfirm" styleClass="field-label" text="Confirm email" />
+                                    <TextField fx:id="emailConfirm" accessibleText="Confirm email" />
+                                 </children>
+                              </VBox>
+                              <VBox styleClass="field" GridPane.rowIndex="3">
+                                 <children>
+                                    <Label labelFor="$password" styleClass="field-label" text="Password" />
+                                    <PasswordField fx:id="password" accessibleText="Password" />
+                                    <Label fx:id="passwordHelp" styleClass="help-text" text="At least 6 letters or digits" wrapText="true" />
+                                 </children>
+                              </VBox>
+                              <VBox styleClass="field" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                                 <children>
+                                    <Label labelFor="$passwordConfirm" styleClass="field-label" text="Confirm password" />
+                                    <PasswordField fx:id="passwordConfirm" accessibleText="Confirm password" />
+                                 </children>
+                              </VBox>
+                           </children>
+                        </GridPane>
+                        <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="card-footer">
+                           <children>
+                              <Button fx:id="backButton" cancelButton="true" mnemonicParsing="false" onAction="#backPressed" onKeyPressed="#backKeyPressed" styleClass="flat" text="Back to sign in">
+                                 <graphic><FontIcon iconLiteral="mdoal-arrow_back" /></graphic>
+                              </Button>
+                              <Region HBox.hgrow="ALWAYS" />
+                              <Button fx:id="registerButton" defaultButton="true" mnemonicParsing="false" onAction="#registerPressed" onKeyPressed="#registerEntered" styleClass="accent" text="Create account" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+               </children>
+            </StackPane>
+         </content>
+      </ScrollPane>
    </children>
-</AnchorPane>
+</HBox>

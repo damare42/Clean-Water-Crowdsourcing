@@ -3,7 +3,6 @@ package fxapp;
 
 import controller.AppViewController;
 import controller.CreateAdminController;
-import controller.LoginController;
 import controller.MapPickerController;
 import controller.Page;
 import controller.ReportDetailsController;
@@ -449,29 +448,6 @@ public class Main extends Application {
         dialog.initOwner(stage);
         dialog.setScene(Theme.style(new Scene(root)));
         return dialog;
-    }
-
-    /**
-     * a method to show the dialog for login
-     * @return whether or not the dialog was shown
-     */
-    public boolean showLoginDialog() {
-        try {
-            FXMLLoader loader = load("/view/LoginPage.fxml");
-            Stage dialog = dialogStage(loader.getRoot(), "Log in");
-            LoginController controller = loader.getController();
-            controller.setDialogStage(dialog);
-            controller.setApp(this);
-
-            // Show the dialog and wait until the user closes it
-            dialog.showAndWait();
-
-            return controller.confirmLoginClicked();
-
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Could not load the login dialog", e);
-            return false;
-        }
     }
 
     /**

@@ -417,6 +417,14 @@
     -fx-border-color: -cwc-brand-300;
 }
 
+.sidebar .user-chip > .arrow-button {
+    -fx-padding: 0 2px 0 4px;
+}
+
+.sidebar .user-chip > .label {
+    -fx-padding: 0;
+}
+
 .sidebar .user-chip > .arrow-button > .arrow {
     -fx-background-color: -cwc-sidebar-fg-muted;
 }
@@ -453,8 +461,8 @@
     -fx-padding: 48px;
     -fx-spacing: 20px;
     -fx-alignment: center-left;
-    -fx-min-width: 380px;
-    -fx-pref-width: 520px;
+    -fx-min-width: 360px;
+    -fx-pref-width: 440px;
 }
 
 .auth-hero .hero-logo {
@@ -551,4 +559,23 @@
     -fx-background-color: -cwc-surface;
     -fx-padding: 24px;
     -fx-spacing: 16px;
+}
+
+.dialog-icon {
+    -fx-background-color: -cwc-brand-50;
+    -fx-background-radius: 999px;
+    -fx-min-width: 44px;
+    -fx-min-height: 44px;
+    -fx-max-width: 44px;
+    -fx-max-height: 44px;
+}
+
+.dialog-icon .ikonli-font-icon {
+    -fx-icon-color: -cwc-brand-700;
+    -fx-icon-size: 22px;
+}
+
+.dialog-footer {
+    -fx-spacing: 8px;
+    -fx-alignment: center-right;
 }

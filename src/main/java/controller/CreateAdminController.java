@@ -9,6 +9,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import model.Account;
+import model.Validation;
 import model.service.AuthService;
 
 import java.net.URL;
@@ -47,6 +48,10 @@ public class CreateAdminController implements Initializable {
     private Button createButton;
     @FXML
     private Button cancelButton;
+    @FXML
+    private Label passwordHelp;
+
+    private final FieldErrors fieldErrors = new FieldErrors();
 
     private Main application;
     private Stage dialogStage;
@@ -56,6 +61,12 @@ public class CreateAdminController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        passwordHelp.setText("At least " + Validation.MIN_PASSWORD_LENGTH + " letters or digits");
+        fieldErrors.on(Validation.MSG_INVALID_NAME, firstname, lastname)
+                .on(Validation.MSG_INVALID_EMAIL, email)
+                .on(Validation.MSG_EMAIL_MISMATCH, emailConfirm)
+                .on(Validation.MSG_INVALID_PASSWORD, password)
+                .on(Validation.MSG_PASSWORD_MISMATCH, passwordConfirm);
     }
 
     /**
@@ -137,8 +148,12 @@ public class CreateAdminController implements Initializable {
     }
 
     private void showError(String text) {
-        errorMessage.setText(text);
-        errorMessage.setVisible(true);
+        Banners.show(errorMessage, text, Banners.Kind.DANGER);
+        // Grow the window so the message does not squeeze the form.
+        dialogStage.sizeToScene();
+        if (!fieldErrors.show(text)) {
+            firstname.requestFocus();
+        }
     }
 
     /**
