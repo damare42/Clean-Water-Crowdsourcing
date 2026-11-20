@@ -28,10 +28,13 @@ freely (down to 960x640) and keeps its size when you move between pages.
   by the report's condition: green for Potable or Safe, teal for Clear, amber for Muddy or
   Treatable, red for Waste or Unsafe (the legend at the bottom left explains the shapes
   and colours). Click a marker to see its fields; **Details** in the popup opens the
-  full report. The **Reports** panel on the right lists the same reports as cards, newest
-  first: click a card to centre the map on it, double-click it (or press ENTER) for the
-  details. The panel starts hidden in narrow windows; **Reports** on the map shows it.
-  **Report water source** and **Report purity** on the map open the forms.
+  full report. The **Reports** panel on the right lists the same reports as cards: nearest
+  first once the approximate location is known, each card saying how far away the report
+  is (for example "3.2 km away", measured from that rough location); newest first while
+  no location is known or it is switched off. Click a card to centre the map on it,
+  double-click it (or press ENTER) for the details. The panel starts hidden in narrow
+  windows; **Reports** on the map shows it. **Report water source** and **Report purity**
+  on the map open the forms.
 - **Report water source**: type the latitude and longitude, or press **Pick on map** and
   click the spot; the chosen point fills both fields (up to 6 decimal places). Choose the
   type and condition and press **Submit report** (or ENTER); **Cancel** (or ESC) goes back
