@@ -579,3 +579,110 @@
     -fx-spacing: 8px;
     -fx-alignment: center-right;
 }
+
+/* ---------------------------------------------------------------- map page */
+.map-actions {
+    -fx-spacing: 8px;
+    -fx-padding: 10px 10px 10px 56px;
+}
+
+.map-actions > .button {
+    -fx-effect: dropshadow(three-pass-box, rgba(31, 35, 40, 0.25), 6px, 0, 0, 2px);
+}
+
+.map-actions > .button:default,
+.map-actions > .button.accent {
+    -fx-effect: dropshadow(three-pass-box, rgba(14, 116, 144, 0.35), 8px, 0, 0, 2px);
+}
+
+.report-panel {
+    -fx-background-color: -cwc-border, -cwc-app-bg;
+    -fx-background-insets: 0, 0 0 0 1px;
+    -fx-min-width: 320px;
+    -fx-pref-width: 320px;
+    -fx-max-width: 320px;
+}
+
+.report-panel-header {
+    -fx-padding: 16px 12px 12px 16px;
+    -fx-spacing: 8px;
+    -fx-alignment: center-left;
+}
+
+.report-panel .scroll-pane,
+.report-panel .scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.report-list {
+    -fx-padding: 0 12px 16px 12px;
+    -fx-spacing: 8px;
+}
+
+.button.report-card {
+    -fx-background-color: -cwc-border-muted, -cwc-surface;
+    -fx-background-insets: 0, 1px;
+    -fx-background-radius: 8px, 7px;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 12px;
+    -fx-alignment: top-left;
+    -fx-cursor: hand;
+    -fx-effect: none;
+}
+
+.button.report-card:hover {
+    -fx-background-color: -cwc-brand-200, -cwc-surface;
+}
+
+.button.report-card.current {
+    -fx-background-color: -cwc-brand-500, -cwc-brand-50;
+    -fx-background-insets: 0, 0 0 0 3px;
+}
+
+.button.report-card:focus-visible {
+    -fx-background-color: -cwc-brand-600, -cwc-brand-600, -cwc-surface;
+    -fx-background-insets: -2px, 0, 2px;
+}
+
+.report-card .report-icon {
+    -fx-icon-color: -cwc-brand-700;
+    -fx-icon-size: 18px;
+}
+
+.report-card .report-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: -cwc-text;
+}
+
+.report-card .report-detail {
+    -fx-text-fill: -cwc-text;
+}
+
+.report-card .report-meta {
+    -fx-font-size: 12px;
+    -fx-text-fill: -cwc-text-muted;
+}
+
+/* --------------------------------------------------------- empty states */
+.empty-state {
+    -fx-alignment: center;
+    -fx-spacing: 8px;
+    -fx-padding: 32px 24px 32px 24px;
+}
+
+.empty-state .empty-icon {
+    -fx-icon-color: -cwc-text-subtle;
+    -fx-icon-size: 40px;
+}
+
+.empty-state .empty-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -cwc-text;
+}
+
+.empty-state .empty-text {
+    -fx-text-fill: -cwc-text-muted;
+    -fx-text-alignment: center;
+}

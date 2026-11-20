@@ -120,6 +120,28 @@
         return node;
     }
 
+    // Condition values that get a coloured badge in the popup; anything else is plain text.
+    var CONDITION_BADGES = {
+        Potable: 'ok', Safe: 'ok',
+        Clear: 'info',
+        Muddy: 'warn', Treatable: 'warn',
+        Waste: 'bad', Unsafe: 'bad'
+    };
+
+    function valueCell(field) {
+        var cell = element('td');
+        var tone = field.label === 'Condition' && Object.prototype.hasOwnProperty.call(CONDITION_BADGES, field.value)
+            ? CONDITION_BADGES[field.value] : null;
+        if (tone) {
+            var badge = element('span', field.value);
+            badge.className = 'cwc-badge cwc-badge-' + tone;
+            cell.appendChild(badge);
+        } else {
+            cell.textContent = field.value;
+        }
+        return cell;
+    }
+
     function popupContent(marker) {
         var root = element('div');
         root.className = 'cwc-popup';
@@ -128,12 +150,13 @@
         marker.fields.forEach(function (field) {
             var row = element('tr');
             row.appendChild(element('th', field.label));
-            row.appendChild(element('td', field.value));
+            row.appendChild(valueCell(field));
             table.appendChild(row);
         });
         root.appendChild(table);
         var details = element('button', 'Details');
         details.type = 'button';
+        details.className = 'cwc-details';
         details.addEventListener('click', function () {
             if (bridge()) {
                 bridge().openDetails(marker.kind, String(marker.id));
@@ -153,6 +176,8 @@
             var options = {title: m.title, alt: m.title};
             if (m.kind === 'purity') {
                 options.icon = PURITY_ICON;
+                // Keep the small purity dots above the larger source pins.
+                options.zIndexOffset = 1000;
                 purityCount++;
             }
             var marker = L.marker([m.lat, m.lon], options);
