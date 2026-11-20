@@ -236,6 +236,62 @@ public final class LeafletMap {
         call(null, "focusMarker", kind, id);
     }
 
+    /** How {@link #showUserLocation} may move the map. */
+    public enum Recenter {
+        /** Centre on the location unless the user has already moved the map or shown a report. */
+        AUTO("auto"),
+        /** Always centre on the location ("Locate me"). */
+        FORCE("force"),
+        /** Only draw the location. */
+        NONE("none");
+
+        private final String word;
+
+        Recenter(String word) {
+            this.word = word;
+        }
+    }
+
+    /**
+     * Draws the approximate location of this computer (a dot and an accuracy circle, in
+     * a layer of their own: they are not report markers) and maybe centres the map on it.
+     * If the page has to be reloaded, the location is drawn again without forcing a
+     * recentre.
+     *
+     * @param json the location as written by {@link model.map.LocationJson}
+     * @param recenter whether to centre the map on it
+     */
+    public void showUserLocation(String json, Recenter recenter) {
+        state.put("userLocation", replayable("setUserLocation", json,
+                recenter == Recenter.FORCE ? Recenter.AUTO.word : recenter.word));
+        call(null, "setUserLocation", json, recenter.word);
+    }
+
+    /**
+     * Removes the location drawn by {@link #showUserLocation}.
+     */
+    public void clearUserLocation() {
+        state.remove("userLocation");
+        call(null, "clearUserLocation");
+    }
+
+    /**
+     * Shows all report markers (the overview the map starts with when no location is known).
+     */
+    public void fitAll() {
+        call(null, "fitAll");
+    }
+
+    private Consumer<JSObject> replayable(String function, Object... args) {
+        return target -> {
+            try {
+                target.call(function, args);
+            } catch (JSException e) {
+                LOGGER.log(Level.WARNING, "Map call " + function + " failed", e);
+            }
+        };
+    }
+
     /**
      * Makes the map re-read the size of its view (it keeps its centre).
      */

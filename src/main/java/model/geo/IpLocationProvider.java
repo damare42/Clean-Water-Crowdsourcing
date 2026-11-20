@@ -69,10 +69,12 @@ public final class IpLocationProvider implements LocationProvider {
 
     /**
      * @return an HTTP client for lookups: the system proxy settings, no redirects, no
-     *         cookies, a {@link #CONNECT_TIMEOUT} connect timeout
+     *         cookies, a {@link #CONNECT_TIMEOUT} connect timeout, and HTTP/1.1 (so no
+     *         protocol-upgrade headers are added to the request either)
      */
     public static HttpClient newClient() {
         return HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .proxy(ProxySelector.getDefault())
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .connectTimeout(CONNECT_TIMEOUT)

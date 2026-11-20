@@ -137,8 +137,8 @@ class IpLocationProviderTest {
         assertNull(headers.get("Referer"));
         assertNull(headers.get("Authorization"));
         for (String name : headers.keySet()) {
-            assertTrue(List.of("User-agent", "Accept", "Host", "Connection", "Upgrade", "Http2-settings",
-                    "Content-length").contains(name), "unexpected header " + name + ": " + headers);
+            assertTrue(List.of("User-agent", "Accept", "Host", "Connection", "Content-length").contains(name),
+                    "unexpected header " + name + ": " + headers);
         }
     }
 
