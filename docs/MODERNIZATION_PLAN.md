@@ -60,7 +60,7 @@ milestones (P4.0–P4.7) and their acceptance checklists are in
 - [x] UI/UX overhaul (map painting fix and one-scene window, AtlantaFX 2.0.1 theme with Ikonli icons and css/app.css, sidebar shell with role-aware navigation, inline sign-in, remodelled forms, tables, dialogs and map page)
 - [x] Approximate location at sign-in (IP lookup with time-zone fallback, privacy setting, schema v3 `app_settings`); open item: verify the default provider's live response on a networked machine
 - [ ] Phase 4 – shared server (decided; see [PHASE4_PLAN.md](PHASE4_PLAN.md))
-  - [ ] P4.0 Multi-module split (`cwc-core`, `cwc-desktop`), no behaviour change
+  - [x] P4.0 Multi-module split (`cwc-core`, `cwc-desktop`), no behaviour change
   - [ ] P4.1 Server skeleton and authentication
   - [ ] P4.2 Reports and history API
   - [ ] P4.3 Desktop "Server" mode

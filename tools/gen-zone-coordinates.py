@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Generates src/main/resources/geo/zone-coordinates.tsv: the approximate position of
-every IANA time zone (the principal city listed in tzdata's zone1970.tab / zone.tab),
+"""Generates cwc-desktop/src/main/resources/geo/zone-coordinates.tsv: the approximate
+position of every IANA time zone (the principal city listed in tzdata's zone1970.tab / zone.tab),
 plus the backward-compatible link aliases from tzdata.zi (e.g. Asia/Calcutta,
 US/Eastern). The app uses it to place the map when no other location is known; it
 never leaves the computer. tzdata is in the public domain.
 
-usage: python3 tools/gen-zone-coordinates.py [zoneinfo-dir] > src/main/resources/geo/zone-coordinates.tsv
+usage: python3 tools/gen-zone-coordinates.py [zoneinfo-dir] \
+           > cwc-desktop/src/main/resources/geo/zone-coordinates.tsv
        (zoneinfo-dir defaults to /usr/share/zoneinfo)
 """
 import os

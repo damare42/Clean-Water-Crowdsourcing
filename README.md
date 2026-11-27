@@ -71,7 +71,7 @@ freely (down to 960x640) and keeps its size when you move between pages.
 ### Map and network
 
 The map uses [Leaflet](https://leafletjs.com) 1.9.4, bundled with the app under
-`src/main/resources/web/leaflet/` (BSD-2-Clause, see the `LICENSE` file there; taken
+`cwc-desktop/src/main/resources/web/leaflet/` (BSD-2-Clause, see the `LICENSE` file there; taken
 unmodified from the npm package `leaflet@1.9.4`). Only the map tiles come from the
 network, from `tile.openstreetmap.org`. Without a connection the map background stays
 blank (a "Map tiles unavailable" notice says so), but pins, popups, the report list and
@@ -94,7 +94,7 @@ The OpenStreetMap tile servers are run by volunteers for light use under their
 [tile usage policy](https://operations.osmfoundation.org/policies/tiles/); the app
 identifies itself with a `CleanWaterCrowdsourcing` user-agent suffix. A deployment with
 many users should switch to a commercial or self-hosted tile service (the tile URL is at
-the top of `src/main/resources/web/map.js`).
+the top of `cwc-desktop/src/main/resources/web/map.js`).
 
 ## Privacy
 
@@ -120,10 +120,10 @@ uses the app on this computer:
 
 Switching to time zone or Off deletes the kept answer. The lookup can also be switched
 off for an installation, whatever the setting says, with `-Dcwc.geo.url=off` (with
-`mvn javafx:run -Dcwc.geo.url=off`); the Privacy section then shows the option as
+`./mvnw -pl cwc-desktop -am compile javafx:run -Dcwc.geo.url=off`); the Privacy section then shows the option as
 disabled. `-Dcwc.geo.url=<https URL>` uses another service; the app understands the
 answers of ipapi.co, [ipwho.is](https://ipwho.is/) and [ipinfo.io](https://ipinfo.io/)
-(`mvn javafx:run` passes `default` when nothing is given, which means ipapi.co).
+(`javafx:run` passes `default` when nothing is given, which means ipapi.co).
 
 ipapi.co's free service, used without an API key, is meant for light use (about 1,000
 requests a day) under its [terms](https://ipapi.co/terms/); the default suits a
@@ -132,7 +132,7 @@ provider.
 
 **Open item:** the response formats were taken from the providers' documentation and
 tested against local copies only (the providers could not be reached from the build
-environment). Before a release, run `./mvnw javafx:run` once on a networked computer and
+environment). Before a release, run `./mvnw -pl cwc-desktop -am compile javafx:run` once on a networked computer and
 check that the map centres near the real location with "(from your IP address)"; if the
 default provider has changed its answer, switch the default to ipwho.is or ipinfo.io.
 
@@ -149,7 +149,7 @@ install is needed.
 ### Look and feel
 
 The UI uses the [AtlantaFX](https://github.com/mkpaz/atlantafx) PrimerLight theme with the
-app's own stylesheet on top (`src/main/resources/css/app.css`), and
+app's own stylesheet on top (`cwc-desktop/src/main/resources/css/app.css`), and
 [Ikonli](https://kordamp.org/ikonli/) Material Design icons. Both come from Maven and
 bundle their fonts and stylesheets; nothing is downloaded at run time. AtlantaFX is pinned
 to **2.0.1** on purpose: it is the last release built for Java 17 and JavaFX 20, so it runs
@@ -158,21 +158,36 @@ Java 25 and JavaFX 27).
 
 ## Build, run and test
 
-```sh
-# Run the application
-./mvnw javafx:run
+The build has two modules (see [Project layout](#project-layout)): `cwc-core` (plain
+Java: accounts, permissions, validation, reports, services and repository interfaces)
+and `cwc-desktop` (the JavaFX app with its SQLite storage). Run Maven from the
+repository root:
 
-# Compile and run all tests
+```sh
+# Run the application (compiles cwc-core and cwc-desktop first)
+./mvnw -pl cwc-desktop -am compile javafx:run
+
+# Compile and run all tests of both modules
 ./mvnw verify
+
+# Only the core tests
+./mvnw -pl cwc-core test
 ```
 
-Tests cover the model, persistence and service layers and do not need a display.
-The JavaFX screens and the map page are not covered by `mvn verify`.
-SQLite tests use temporary files, never your real database.
+The app options described below (`-Dcwc.db.path`, `-Dcwc.geo.url`, `-Dcwc.bootstrapAdmin`)
+are added to the end of the run command (see [Data storage](#data-storage) for an example).
+A plain `./mvnw javafx:run` from the root does not work: Maven needs `-pl cwc-desktop -am`
+to build the core module first. Nothing is installed into your local Maven repository.
 
-Run the app with `mvn javafx:run`. The jar built by `mvn verify` is not runnable on its
-own with `java -jar`: JavaFX must be on the module path, which the JavaFX Maven plugin
-sets up for you.
+Tests cover the model, persistence and service layers and do not need a display.
+The JavaFX screens and the map page are not covered by `./mvnw verify`.
+SQLite tests use temporary files, never your real database. `cwc-core` must stay free of
+JavaFX, AtlantaFX, Ikonli and SQLite: the build fails if one of them becomes a
+dependency of the core module.
+
+The jar built by `./mvnw verify` (`cwc-desktop/target/cwc-desktop-0.1.0-SNAPSHOT.jar`) is
+not runnable on its own with `java -jar`: JavaFX must be on the module path, which the
+JavaFX Maven plugin sets up for you.
 
 ## Data storage
 
@@ -189,8 +204,8 @@ the `cwc.db.path` system property; `:memory:` gives a throw-away database that i
 discarded when the app exits:
 
 ```sh
-mvn javafx:run -Dcwc.db.path=/tmp/cwc-demo.db
-mvn javafx:run -Dcwc.db.path=:memory:
+./mvnw -pl cwc-desktop -am compile javafx:run -Dcwc.db.path=/tmp/cwc-demo.db
+./mvnw -pl cwc-desktop -am compile javafx:run -Dcwc.db.path=:memory:
 ```
 
 (The pom passes the Maven property on to the app's JVM; when running `fxapp.Main`
@@ -237,7 +252,7 @@ the app with the `cwc.bootstrapAdmin` system property set to the administrator's
 while no administrator exists:
 
 ```sh
-mvn javafx:run -Dcwc.bootstrapAdmin=admin
+./mvnw -pl cwc-desktop -am compile javafx:run -Dcwc.bootstrapAdmin=admin
 # or, running fxapp.Main directly: java -Dcwc.bootstrapAdmin=admin ...
 ```
 
@@ -347,26 +362,36 @@ can be recorded.
 ## Project layout
 
 ```
-pom.xml                         Maven build (Java 17, OpenJFX, AtlantaFX, Ikonli, JUnit 5)
-src/main/java/fxapp/            Application entry point (fxapp.Main), navigation and theme (Theme)
-src/main/java/controller/       JavaFX controllers, one per screen; ShellController is the sidebar
-                                frame of the signed-in pages, LeafletMap drives the map page
-src/main/java/fxapp/AppContext  Builds the services and opens the database (composition root)
-src/main/java/model/            Accounts, roles/permissions, validation, water source and
+pom.xml                         Parent build: versions, plugins, enforcer rules; modules below
+cwc-core/                       Plain Java, shared by the desktop app and the planned server
+  src/main/java/model/          Accounts, roles/permissions, validation, water source and
                                 purity reports, coordinates and distances (GeoPoint)
-src/main/java/model/map         Map markers and the user's location as JSON for the map page
-src/main/java/model/geo         Approximate location: IP lookup, strict JSON reader, time-zone
-                                table, LocationService (mode, cache, fallback chain)
-src/main/java/model/persistence Repository interfaces with SQLite and in-memory implementations
-src/main/java/model/security    PBKDF2 password hashing, security events, lockout policy
-src/main/java/model/service     AuthService, AccountService, ReportService, PurityReportService,
+  src/main/java/model/persistence  Repository interfaces and in-memory implementations
+  src/main/java/model/security  PBKDF2 password hashing, security events, lockout policy
+  src/main/java/model/service   AuthService, AccountService, ReportService, PurityReportService,
                                 SecurityLog, permission checks (AccessControl)
-src/main/resources/view/        FXML layouts, loaded as /view/<Name>.fxml
-src/main/resources/css/app.css  App stylesheet (brand colours and components) on top of AtlantaFX
-src/main/resources/geo/         Time-zone positions (generated by tools/gen-zone-coordinates.py)
-src/main/resources/web/         Map page (map.html, map.js, map.css) and bundled Leaflet
-src/test/java/                  JUnit 5 tests (repository contract tests run against
-                                both the in-memory and the SQLite implementation)
+  src/test/java/                JUnit 5 tests; the repository contract tests and test
+                                utilities are also published as a test-jar for cwc-desktop
+cwc-desktop/                    The JavaFX desktop app (depends on cwc-core)
+  src/main/java/fxapp/          Application entry point (fxapp.Main), navigation and theme
+                                (Theme); AppContext builds the services and opens the
+                                database (composition root)
+  src/main/java/controller/     JavaFX controllers, one per screen; ShellController is the
+                                sidebar frame of the signed-in pages, LeafletMap drives the map
+  src/main/java/model/map       Map markers and the user's location as JSON for the map page,
+                                report order and distances for the report list
+  src/main/java/model/geo       Approximate location: IP lookup, strict JSON reader, time-zone
+                                table, LocationService (mode, cache, fallback chain)
+  src/main/java/model/persistence  SQLite database and repositories, database location
+  src/main/resources/view/      FXML layouts, loaded as /view/<Name>.fxml
+  src/main/resources/css/app.css  App stylesheet (brand colours and components) on top of
+                                AtlantaFX
+  src/main/resources/geo/       Time-zone positions (generated by tools/gen-zone-coordinates.py)
+  src/main/resources/web/       Map page (map.html, map.js, map.css) and bundled Leaflet
+  src/test/java/                JUnit 5 tests (the core's repository contract tests run
+                                against the SQLite implementation here)
+tools/                          gen-zone-coordinates.py (regenerates the time-zone table)
 docs/MODERNIZATION_PLAN.md      Modernization phases and status
-.github/workflows/ci.yml        GitHub Actions: mvn -B verify on push and pull request
+docs/PHASE4_PLAN.md             Phase 4 (shared server): decisions, architecture, milestones
+.github/workflows/ci.yml        GitHub Actions: ./mvnw -B verify on push and pull request
 ```

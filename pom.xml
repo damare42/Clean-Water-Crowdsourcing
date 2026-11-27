@@ -5,12 +5,17 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>edu.cwc</groupId>
-    <artifactId>clean-water-crowdsourcing</artifactId>
+    <artifactId>clean-water-crowdsourcing-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>Clean Water Crowdsourcing</name>
-    <description>JavaFX desktop client for crowdsourced water source reports.</description>
+    <description>Crowdsourced water source reports: shared core and JavaFX desktop app.</description>
+
+    <modules>
+        <module>cwc-core</module>
+        <module>cwc-desktop</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -37,71 +42,29 @@
         <maven-deploy-plugin.version>3.1.2</maven-deploy-plugin.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
         <javafx-maven-plugin.version>0.0.8</javafx-maven-plugin.version>
-
-        <main.class>fxapp.Main</main.class>
-        <!-- Database file for mvn javafx:run; empty means the default ~/.cwc/cwc.db.
-             Override with: mvn javafx:run -Dcwc.db.path=/path/to/file.db (or :memory:) -->
-        <cwc.db.path></cwc.db.path>
-        <!-- Id of the first administrator, created at start-up while none exists; empty
-             means no bootstrap. Use: mvn javafx:run -Dcwc.bootstrapAdmin=admin -->
-        <cwc.bootstrapAdmin></cwc.bootstrapAdmin>
-        <!-- Approximate-location lookup URL for mvn javafx:run. "default" means the built-in
-             provider (https://ipapi.co/json/); "off" switches IP lookup off.
-             Use: mvn javafx:run -Dcwc.geo.url=off  (an empty value also means off) -->
-        <cwc.geo.url>default</cwc.geo.url>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-controls</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-fxml</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-web</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.mkpaz</groupId>
-            <artifactId>atlantafx-base</artifactId>
-            <version>${atlantafx.version}</version>
-            <exclusions>
-                <!-- Built against JavaFX 20; this project's own JavaFX 21 is used instead. -->
-                <exclusion>
-                    <groupId>org.openjfx</groupId>
-                    <artifactId>javafx-controls</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.kordamp.ikonli</groupId>
-            <artifactId>ikonli-javafx</artifactId>
-            <version>${ikonli.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.kordamp.ikonli</groupId>
-            <artifactId>ikonli-material2-pack</artifactId>
-            <version>${ikonli.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.xerial</groupId>
-            <artifactId>sqlite-jdbc</artifactId>
-            <version>${sqlite-jdbc.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>edu.cwc</groupId>
+                <artifactId>cwc-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>edu.cwc</groupId>
+                <artifactId>cwc-core</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <pluginManagement>
@@ -120,6 +83,38 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-deploy-plugin</artifactId>
                     <version>${maven-deploy-plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>${maven-resources-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-maven-plugin</artifactId>
+                    <version>${javafx-maven-plugin.version}</version>
+                    <!-- Only cwc-desktop runs the app: everywhere else javafx:run is a no-op, so
+                         "./mvnw -pl cwc-desktop -am compile javafx:run" works from the root. -->
+                    <configuration>
+                        <skip>true</skip>
+                        <mainClass>none</mainClass>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -142,43 +137,11 @@
                                 <requireJavaVersion>
                                     <version>[17,)</version>
                                 </requireJavaVersion>
+                                <dependencyConvergence/>
                             </rules>
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>${maven-resources-plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>${maven-jar-plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.openjfx</groupId>
-                <artifactId>javafx-maven-plugin</artifactId>
-                <version>${javafx-maven-plugin.version}</version>
-                <configuration>
-                    <mainClass>${main.class}</mainClass>
-                    <options>
-                        <option>-Dcwc.db.path=${cwc.db.path}</option>
-                        <option>-Dcwc.bootstrapAdmin=${cwc.bootstrapAdmin}</option>
-                        <option>-Dcwc.geo.url=${cwc.geo.url}</option>
-                    </options>
-                </configuration>
             </plugin>
         </plugins>
     </build>

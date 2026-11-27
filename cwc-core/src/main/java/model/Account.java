@@ -1,8 +1,5 @@
 package model;
 
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
-
 import java.util.Optional;
 import java.util.Set;
 
@@ -19,11 +16,11 @@ import java.util.Set;
 public abstract class Account {
 
     private final String id;
-    private final StringProperty fname = new SimpleStringProperty();
-    private final StringProperty lname = new SimpleStringProperty();
-    private final StringProperty email = new SimpleStringProperty();
-    private final StringProperty phone = new SimpleStringProperty();
-    private final StringProperty address = new SimpleStringProperty();
+    private String fname;
+    private String lname;
+    private String email;
+    private String phone;
+    private String address;
 
     /**
      * Only the subclasses in this package can create accounts; everyone else uses
@@ -34,11 +31,11 @@ public abstract class Account {
             throw new IllegalArgumentException(Validation.MSG_INVALID_ID);
         }
         this.id = Validation.normalizeId(id);
-        this.fname.set(fname);
-        this.lname.set(lname);
-        this.email.set(email);
-        this.phone.set(phone == null ? "" : phone);
-        this.address.set(address == null ? "" : address);
+        this.fname = fname;
+        this.lname = lname;
+        this.email = email;
+        this.phone = phone == null ? "" : phone;
+        this.address = address == null ? "" : address;
     }
 
     /**
@@ -85,11 +82,11 @@ public abstract class Account {
         if (error.isPresent()) {
             throw new IllegalArgumentException(error.get());
         }
-        this.fname.set(fname);
-        this.lname.set(lname);
-        this.email.set(email);
-        this.phone.set(phone == null ? "" : phone);
-        this.address.set(address == null ? "" : address);
+        this.fname = fname;
+        this.lname = lname;
+        this.email = email;
+        this.phone = phone == null ? "" : phone;
+        this.address = address == null ? "" : address;
     }
 
     /**
@@ -108,23 +105,23 @@ public abstract class Account {
     }
 
     public String getFname() {
-        return fname.get();
+        return fname;
     }
 
     public String getLname() {
-        return lname.get();
+        return lname;
     }
 
     public String getEmail() {
-        return email.get();
+        return email;
     }
 
     public String getPhone() {
-        return phone.get();
+        return phone;
     }
 
     public String getAddress() {
-        return address.get();
+        return address;
     }
 
     /**
