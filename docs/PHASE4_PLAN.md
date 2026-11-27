@@ -39,7 +39,8 @@ Rejected alternatives are summarised in Appendix A.
 
 - **Spring Boot 4.2.0** (baseline Java 17). Its BOM pins Flyway 12.11, pgJDBC 42.7.14,
   Jackson 3.1.8 and Testcontainers 2.0.5. Further libraries: bucket4j_jdk17-core 8.22.0,
-  springdoc-openapi 3.2.0, Caffeine 3.3.1.
+  springdoc-openapi 3.2.0, Caffeine 3.3.1. These versions were noted while planning;
+  confirm them against the Spring Boot BOM when P4.1 starts.
 - **PostgreSQL 16.** The extensions `cube`, `earthdistance` and `pgcrypto` are enough;
   **PostGIS is not required.**
 - **Docker is optional for development.** Integration tests take a database URL
