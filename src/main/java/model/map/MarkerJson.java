@@ -10,8 +10,9 @@ import java.util.List;
  * {@code \}{@code uXXXX} escape, so the text is safe to hand to JavaScript's
  * {@code JSON.parse} and stays harmless even if it ends up inside HTML or a script.
  * <p>
- * Format: an array of {@code {"kind", "id", "lat", "lon", "title",
- * "fields": [{"label", "value"}, ...]}} objects.
+ * Format: an array of {@code {"kind", "id", "lat", "lon", "title", "status",
+ * "fields": [{"label", "value"}, ...]}} objects; {@code status} is one of the
+ * {@link MapMarker.Status#word() status words}.
  */
 public final class MarkerJson {
 
@@ -43,6 +44,8 @@ public final class MarkerJson {
         out.append(",\"lon\":").append(marker.position().longitude());
         out.append(",\"title\":");
         appendString(out, marker.title());
+        out.append(",\"status\":");
+        appendString(out, marker.status().word());
         out.append(",\"fields\":[");
         List<ReportField> fields = marker.fields();
         for (int i = 0; i < fields.size(); i++) {

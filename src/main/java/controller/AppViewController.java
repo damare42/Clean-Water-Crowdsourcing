@@ -22,6 +22,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
 import model.Account;
+import model.GeoPoint;
 import model.Permission;
 import model.Report;
 import model.WaterPurityReport;
@@ -30,6 +31,7 @@ import model.geo.ApproximateLocation;
 import model.geo.LocationSource;
 import model.map.LocationJson;
 import model.map.MapMarker;
+import model.map.ReportOrder;
 import model.persistence.DataAccessException;
 import model.service.PermissionDeniedException;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -37,15 +39,16 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * The main page: a map of the reports the account may see, a list of the same reports
- * as cards beside it, and buttons for the reports the account may file. The navigation
+ * as cards beside it (newest first, or nearest first once the approximate location of
+ * this computer is known), and buttons for the reports the account may file. The navigation
  * to the other pages is in the shell ({@link ShellController}); the services check the
  * permissions again whatever the page shows. Report data is shown with labels only
  * (never as HTML).
@@ -97,6 +100,10 @@ public class AppViewController implements Initializable, Page {
 
     private Main application;
     private Button currentCard;
+    /** The reports shown, in the order the services returned them. */
+    private List<Report> reports = List.of();
+    /** The approximate location of this computer, or null: the list is then newest first. */
+    private GeoPoint origin;
     /** Keeps the map, and with it the page's bridge object, reachable. */
     private LeafletMap map;
 
@@ -201,6 +208,7 @@ public class AppViewController implements Initializable, Page {
      */
     public void showUserLocation(ApproximateLocation location, LeafletMap.Recenter recenter, String providerHost) {
         map.showUserLocation(LocationJson.toJson(location), recenter);
+        sortCardsFrom(location.point());
         if (location.source() == LocationSource.IP) {
             String place = location.placeLabel().isEmpty() ? "" : ": " + location.placeLabel();
             locationLabel.setText("Approximate location" + place + " (from your IP address)");
@@ -220,6 +228,7 @@ public class AppViewController implements Initializable, Page {
      */
     public void showLocationOff() {
         map.clearUserLocation();
+        sortCardsFrom(null);
         locationLabel.setText("Location is off");
         locationDisclosure.setText("");
         show(locationChip, true);
@@ -232,6 +241,7 @@ public class AppViewController implements Initializable, Page {
      * Shows no location (none is known yet, or none could be found).
      */
     public void hideUserLocation() {
+        sortCardsFrom(null);
         show(locationChip, false);
         show(locateButton, true);
         updateActionsVisibility();
@@ -283,7 +293,8 @@ public class AppViewController implements Initializable, Page {
             LOGGER.log(Level.SEVERE, "Could not load reports for the map", e);
         }
         map.showMarkers(MapMarker.forReports(reports, ZoneId.systemDefault()));
-        showCards(reports);
+        this.reports = List.copyOf(reports);
+        showCards();
     }
 
     private static void show(Region node, boolean shown) {
@@ -291,8 +302,23 @@ public class AppViewController implements Initializable, Page {
         node.setManaged(shown);
     }
 
-    /** Fills the report list, newest first. */
-    private void showCards(List<Report> reports) {
+    /**
+     * Orders the report list by distance from a location, or newest first without one.
+     * @param location the approximate location of this computer, or null
+     */
+    private void sortCardsFrom(GeoPoint location) {
+        if (!Objects.equals(location, origin)) {
+            origin = location;
+            showCards();
+        }
+    }
+
+    /**
+     * Fills the report list: nearest first with the distance on each card if the
+     * approximate location is known, else newest first. The selected card stays selected
+     * (and focused, if it was).
+     */
+    private void showCards() {
         long sources = reports.stream().filter(r -> r instanceof WaterSourceReport).count();
         long purity = reports.size() - sources;
         List<String> counts = new ArrayList<>();
@@ -301,12 +327,25 @@ public class AppViewController implements Initializable, Page {
                 && application.getLoggedAccount().hasPermission(Permission.VIEW_PURITY_REPORTS)) {
             counts.add(purity + " purity");
         }
+        if (origin != null && !reports.isEmpty()) {
+            counts.add("nearest first");
+        }
         reportCount.setText(String.join(" \u00b7 ", counts));
-        List<Report> sorted = new ArrayList<>(reports);
-        sorted.sort(Comparator.comparing(Report::getReportedAt).reversed()
-                .thenComparing(Comparator.comparing(Report::getReportNumber).reversed()));
+        Object focusedKey = currentCard != null && currentCard.isFocused() ? currentCard.getUserData() : null;
+        Object selectedKey = currentCard == null ? null : currentCard.getUserData();
+        currentCard = null;
         reportCards.getChildren().clear();
-        sorted.forEach(report -> reportCards.getChildren().add(card(report)));
+        for (Report report : ReportOrder.forList(reports, origin)) {
+            Button card = card(report);
+            reportCards.getChildren().add(card);
+            if (card.getUserData().equals(selectedKey)) {
+                currentCard = card;
+                card.getStyleClass().add("current");
+            }
+            if (card.getUserData().equals(focusedKey)) {
+                card.requestFocus();
+            }
+        }
         boolean empty = reports.isEmpty();
         show(emptyState, empty);
         show(reportScroll, !empty);
@@ -319,7 +358,7 @@ public class AppViewController implements Initializable, Page {
 
     /**
      * A card for one report. Click (or Space) shows it on the map; double-click or ENTER
-     * opens its details.
+     * opens its details. With a known location it also says how far away the report is.
      */
     private Button card(Report report) {
         ZoneId zone = ZoneId.systemDefault();
@@ -361,13 +400,24 @@ public class AppViewController implements Initializable, Page {
                 + " \u00b7 " + report.getReporter());
         when.getStyleClass().add("report-meta");
         VBox body = new VBox(4, top, middle, when);
+        // With a known location: how far away the report is, on a line of its own.
+        String distance = origin == null ? null : ReportOrder.distanceText(report, origin);
+        if (distance != null) {
+            FontIcon arrow = new FontIcon("mdomz-near_me");
+            arrow.getStyleClass().add("report-distance-icon");
+            Label away = new Label(distance, arrow);
+            away.getStyleClass().add("report-distance");
+            body.getChildren().add(away);
+        }
         body.setFillWidth(true);
         Button card = new Button(report.getTitle(), body);
         card.getStyleClass().add("report-card");
         card.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         card.setMaxWidth(Double.MAX_VALUE);
         card.setMnemonicParsing(false);
-        card.setAccessibleText(report.getTitle() + ", " + condition + ", " + detail + ". Press Enter for details.");
+        card.setUserData(kind + ":" + report.getReportNumber());
+        card.setAccessibleText(report.getTitle() + ", " + condition + ", " + detail
+                + (distance == null ? "" : ", " + distance) + ". Press Enter for details.");
         card.setOnAction(event -> select(card, kind, report.getReportNumber()));
         card.setOnMouseClicked(event -> {
             if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {

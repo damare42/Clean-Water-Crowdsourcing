@@ -34,7 +34,7 @@ class MarkerJsonTest {
         String json = MarkerJson.toJson(List.of(MapMarker.forReport(report(7, "alice"), ZoneOffset.UTC)));
 
         assertEquals("[{\"kind\":\"source\",\"id\":7,\"lat\":33.7,\"lon\":-84.39,"
-                + "\"title\":\"Water source report 7\",\"fields\":["
+                + "\"title\":\"Water source report 7\",\"status\":\"success\",\"fields\":["
                 + "{\"label\":\"Report number\",\"value\":\"7\"},"
                 + "{\"label\":\"Date\",\"value\":\"2016/10/11\"},"
                 + "{\"label\":\"Time\",\"value\":\"9:05\"},"
@@ -149,5 +149,74 @@ class MarkerJsonTest {
             }
         };
         assertThrows(IllegalArgumentException.class, () -> MapMarker.kindOf(other));
+    }
+
+    @Test
+    void sourceConditionsMapToStatuses() {
+        assertEquals(MapMarker.Status.SUCCESS, MapMarker.statusOf(WaterSourceCondition.Potable));
+        assertEquals(MapMarker.Status.INFO, MapMarker.statusOf(WaterSourceCondition.Clear));
+        assertEquals(MapMarker.Status.WARNING, MapMarker.statusOf(WaterSourceCondition.Muddy));
+        assertEquals(MapMarker.Status.DANGER, MapMarker.statusOf(WaterSourceCondition.Waste));
+    }
+
+    @Test
+    void purityConditionsMapToStatuses() {
+        assertEquals(MapMarker.Status.SUCCESS, MapMarker.statusOf(WaterPurityCondition.Safe));
+        assertEquals(MapMarker.Status.WARNING, MapMarker.statusOf(WaterPurityCondition.Treatable));
+        assertEquals(MapMarker.Status.DANGER, MapMarker.statusOf(WaterPurityCondition.Unsafe));
+    }
+
+    @Test
+    void anythingElseHasUnknownStatus() {
+        assertEquals(MapMarker.Status.UNKNOWN, MapMarker.statusOf((Object) null));
+        // Text that looks like a condition or a status is not one: only the enums count.
+        assertEquals(MapMarker.Status.UNKNOWN, MapMarker.statusOf("Potable"));
+        assertEquals(MapMarker.Status.UNKNOWN, MapMarker.statusOf("danger"));
+        assertEquals(MapMarker.Status.UNKNOWN,
+                new MapMarker("source", 1, new GeoPoint(1, 2), "t", List.of()).status());
+    }
+
+    @Test
+    void statusIsRequired() {
+        assertThrows(NullPointerException.class,
+                () -> new MapMarker("source", 1, new GeoPoint(1, 2), "t", List.of(), null));
+    }
+
+    @Test
+    void statusWordsAreAFixedListOfPlainWords() {
+        List<String> words = java.util.Arrays.stream(MapMarker.Status.values()).map(MapMarker.Status::word).toList();
+
+        assertEquals(List.of("success", "info", "warning", "danger", "unknown"), words);
+        assertTrue(words.stream().allMatch(w -> w.matches("[a-z]+")), words.toString());
+    }
+
+    @Test
+    void everyReportCarriesTheStatusOfItsCondition() {
+        for (WaterSourceCondition condition : WaterSourceCondition.values()) {
+            WaterSourceReport source = new WaterSourceReport(1, "a", WHEN, 1, 2, WaterSourceType.Well, condition);
+            String json = MarkerJson.toJson(List.of(MapMarker.forReport(source, ZoneOffset.UTC)));
+            assertTrue(json.contains(",\"status\":\"" + MapMarker.statusOf(condition).word() + "\",\"fields\":"), json);
+        }
+        for (WaterPurityCondition condition : WaterPurityCondition.values()) {
+            WaterPurityReport purity = new WaterPurityReport(1, "a", WHEN, new GeoPoint(1, 2), condition, 1, 2);
+            MapMarker marker = MapMarker.forReport(purity, ZoneOffset.UTC);
+            assertEquals(MapMarker.statusOf(condition), marker.status());
+            String json = MarkerJson.toJson(List.of(marker));
+            assertTrue(json.contains(",\"status\":\"" + marker.status().word() + "\",\"fields\":"), json);
+        }
+    }
+
+    @Test
+    void hostileTextCannotChangeTheStatus() {
+        MapMarker marker = new MapMarker("source", 1, new GeoPoint(1, 2),
+                "x\",\"status\":\"<b>danger</b>", List.of(new ReportField("Condition", "\"danger")),
+                MapMarker.Status.SUCCESS);
+
+        String json = MarkerJson.toJson(List.of(marker));
+
+        assertTrue(json.contains("\"title\":\"x\\\",\\\"status\\\":\\\"\\u003cb\\u003edanger\\u003c/b\\u003e\""), json);
+        assertTrue(json.contains("\",\"status\":\"success\",\"fields\":["), json);
+        assertEquals(1, json.split("\"status\":", -1).length - 1, json);
+        assertTrue(json.chars().allMatch(c -> c >= 0x20 && c <= 0x7e), json);
     }
 }

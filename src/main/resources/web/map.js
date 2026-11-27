@@ -3,7 +3,8 @@
  *
  * The Java side (controller.LeafletMap) calls the functions of window.cwcMap and
  * provides window.cwcBridge for calls back into Java. Marker data arrives as a JSON
- * string and is only ever put into the page with textContent, never as HTML.
+ * string and is only ever put into the page with textContent, never as HTML; its
+ * status only picks a class name from a fixed list.
  */
 (function () {
     'use strict';
@@ -105,26 +106,86 @@
     var pickMarker = null;
     var picking = false;
 
-    // Purity reports get their own round icon so they stand out from source pins.
-    var PURITY_ICON = L.divIcon({
-        className: 'cwc-purity-icon',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-        popupAnchor: [0, -8]
-    });
+    // Marker colours by condition. The page only ever sets class names from this fixed
+    // list; the status word from Java picks one, and anything else counts as unknown.
+    var STATUS_CLASSES = {
+        success: 'cwc-status-success',
+        info: 'cwc-status-info',
+        warning: 'cwc-status-warning',
+        danger: 'cwc-status-danger',
+        unknown: 'cwc-status-unknown'
+    };
+
+    function statusClass(status) {
+        return typeof status === 'string' && Object.prototype.hasOwnProperty.call(STATUS_CLASSES, status)
+            ? STATUS_CLASSES[status] : STATUS_CLASSES.unknown;
+    }
+
+    // Water source reports are pins, purity reports round dots, both in the colour of
+    // their condition. The icons are empty boxes drawn by map.css (no HTML content).
+    var markerIcons = {};
+
+    function markerIcon(kind, status) {
+        var purity = kind === 'purity';
+        var className = (purity ? 'cwc-purity-icon ' : 'cwc-source-icon ') + statusClass(status);
+        if (!markerIcons[className]) {
+            markerIcons[className] = purity
+                ? L.divIcon({className: className, iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -8]})
+                : L.divIcon({className: className, iconSize: [24, 30], iconAnchor: [12, 28], popupAnchor: [0, -26]});
+        }
+        return markerIcons[className];
+    }
+
+    // Legend rows for the colours; the purity names are added when purity reports are shown.
+    var LEGEND_STATUSES = [
+        {status: 'success', source: 'Potable', both: 'Potable / Safe'},
+        {status: 'info', source: 'Clear', both: 'Clear'},
+        {status: 'warning', source: 'Muddy', both: 'Muddy / Treatable'},
+        {status: 'danger', source: 'Waste', both: 'Waste / Unsafe'}
+    ];
+    var legendWithPurity = false;
+
+    function legendRow(box, glyphClass, text) {
+        var row = L.DomUtil.create('div', 'cwc-legend-row', box);
+        L.DomUtil.create('span', glyphClass, row);
+        row.appendChild(document.createTextNode(text));
+    }
 
     var legend = L.control({position: 'bottomleft'});
     legend.onAdd = function () {
         var box = L.DomUtil.create('div', 'cwc-legend');
-        var source = L.DomUtil.create('div', '', box);
-        L.DomUtil.create('span', 'cwc-legend-source', source);
-        source.appendChild(document.createTextNode(' Water source report'));
-        var purity = L.DomUtil.create('div', '', box);
-        L.DomUtil.create('span', 'cwc-legend-purity', purity);
-        purity.appendChild(document.createTextNode(' Water purity report'));
+        legendRow(box, 'cwc-legend-source', 'Water source report');
+        if (legendWithPurity) {
+            legendRow(box, 'cwc-legend-purity', 'Water purity report');
+        }
+        var heading = L.DomUtil.create('div', 'cwc-legend-heading', box);
+        heading.textContent = 'Condition';
+        LEGEND_STATUSES.forEach(function (entry) {
+            legendRow(box, 'cwc-legend-swatch ' + STATUS_CLASSES[entry.status],
+                legendWithPurity ? entry.both : entry.source);
+        });
         return box;
     };
     var legendShown = false;
+
+    function updateLegend(markerTotal, withPurity) {
+        if (markerTotal === 0) {
+            if (legendShown) {
+                legend.remove();
+                legendShown = false;
+            }
+            return;
+        }
+        if (legendShown && withPurity === legendWithPurity) {
+            return;
+        }
+        if (legendShown) {
+            legend.remove();
+        }
+        legendWithPurity = withPurity;
+        legend.addTo(map);
+        legendShown = true;
+    }
 
     function key(kind, id) {
         return kind + ':' + id;
@@ -191,9 +252,8 @@
         var bounds = [];
         var purityCount = 0;
         markers.forEach(function (m) {
-            var options = {title: m.title, alt: m.title};
+            var options = {title: m.title, alt: m.title, icon: markerIcon(m.kind, m.status)};
             if (m.kind === 'purity') {
-                options.icon = PURITY_ICON;
                 // Keep the small purity dots above the larger source pins.
                 options.zIndexOffset = 1000;
                 purityCount++;
@@ -204,13 +264,7 @@
             markersByKey[key(m.kind, m.id)] = marker;
             bounds.push([m.lat, m.lon]);
         });
-        if (purityCount > 0 && !legendShown) {
-            legend.addTo(map);
-            legendShown = true;
-        } else if (purityCount === 0 && legendShown) {
-            legend.remove();
-            legendShown = false;
-        }
+        updateLegend(markers.length, purityCount > 0);
         reportBounds = bounds;
         if (!centredOnUser) {
             fitReports();

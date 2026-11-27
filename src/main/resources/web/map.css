@@ -101,13 +101,67 @@ html, body, #map {
     color: #cf222e;
 }
 
-/* Purity report marker */
+/*
+ * Report markers: water source reports are pins, purity reports round dots, coloured by
+ * condition (status classes chosen from a fixed list in map.js). The icons are empty
+ * boxes; the pin is drawn by ::before (body) and ::after (hole).
+ */
+.cwc-source-icon::before {
+    content: "";
+    position: absolute;
+    left: 1px;
+    top: 1px;
+    width: 22px;
+    height: 22px;
+    box-sizing: border-box;
+    border: 2px solid #ffffff;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: -1px 1px 4px rgba(0, 0, 0, 0.45);
+    background: #6e7781;
+}
+
+.cwc-source-icon::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffffff;
+}
+
 .cwc-purity-icon {
-    background: #0e7490;
+    background: #6e7781;
     border: 3px solid #ffffff;
     border-radius: 50%;
-    box-shadow: 0 0 0 1px rgba(14, 116, 144, 0.5), 0 1px 4px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 1px rgba(31, 35, 40, 0.35), 0 1px 4px rgba(0, 0, 0, 0.5);
     box-sizing: border-box;
+}
+
+.cwc-source-icon.cwc-status-success::before,
+.cwc-purity-icon.cwc-status-success,
+.cwc-legend-swatch.cwc-status-success {
+    background: #1a7f37;
+}
+
+.cwc-source-icon.cwc-status-info::before,
+.cwc-purity-icon.cwc-status-info,
+.cwc-legend-swatch.cwc-status-info {
+    background: #0e7490;
+}
+
+.cwc-source-icon.cwc-status-warning::before,
+.cwc-purity-icon.cwc-status-warning,
+.cwc-legend-swatch.cwc-status-warning {
+    background: #bf8700;
+}
+
+.cwc-source-icon.cwc-status-danger::before,
+.cwc-purity-icon.cwc-status-danger,
+.cwc-legend-swatch.cwc-status-danger {
+    background: #cf222e;
 }
 
 /* Legend */
@@ -122,25 +176,58 @@ html, body, #map {
     color: #1f2328;
 }
 
+.cwc-legend-row {
+    white-space: nowrap;
+}
+
+.cwc-legend-heading {
+    margin-top: 4px;
+    border-top: 1px solid #e5e9ee;
+    padding-top: 4px;
+    color: #59636e;
+    font-weight: 600;
+}
+
 .cwc-legend span {
     display: inline-block;
     width: 10px;
     height: 10px;
-    margin-right: 4px;
+    margin: 0 8px 0 2px;
     vertical-align: middle;
+    box-sizing: border-box;
 }
 
-.cwc-legend-source {
-    background: #2a81cb;
+/* Shapes in a neutral colour; the colour rows below say what the colours mean. */
+.cwc-legend span.cwc-legend-source {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    margin: 0 7px 2px 1px;
+    background: #59636e;
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
 }
 
-.cwc-legend-purity {
-    background: #0e7490;
-    border: 2px solid #ffffff;
+.cwc-legend-source::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 4px;
+    height: 4px;
     border-radius: 50%;
-    box-shadow: 0 0 0 1px rgba(14, 116, 144, 0.5);
+    background: #ffffff;
+}
+
+.cwc-legend span.cwc-legend-purity {
+    margin: 0 8px 0 2px;
+    background: #59636e;
+    border-radius: 50%;
+}
+
+/* Colour samples are squares, so they do not read as purity dots. */
+.cwc-legend-swatch {
+    border-radius: 3px;
 }
 
 /* Shown while no map tile could be loaded */
