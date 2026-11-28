@@ -9,6 +9,10 @@ Accounts and reports are stored in a local SQLite database (see
 [Data storage](#data-storage)), so they survive restarts. Data is not shared between
 computers yet. The project is open source under the MIT License (see [License](#license)).
 
+**To install the app**, download the installer for Windows, macOS or Linux from the
+[Releases](../../releases) page; see [Download and install](#download-and-install). To
+build it from source, see [Build, run and test](#build-run-and-test).
+
 ## Using the app
 
 The app opens on the welcome page: sign in with your username and password, or choose
@@ -136,6 +140,54 @@ environment). Before a release, run `./mvnw -pl cwc-desktop -am compile javafx:r
 check that the map centres near the real location with "(from your IP address)"; if the
 default provider has changed its answer, switch the default to ipwho.is or ipinfo.io.
 
+## Download and install
+
+Installers are on the [Releases](../../releases) page. Each one contains its own Java
+runtime, so nothing else needs to be installed. Version 1.0.x stores reports **on this
+computer only**. Sharing reports with other users comes with the shared server (Phase 4).
+
+The installers are **not code-signed** yet, so the first start shows a warning from the
+operating system. Check the download against `SHA256SUMS` on the release page if you like:
+`sha256sum -c SHA256SUMS --ignore-missing` (Linux), `shasum -a 256 <file>` (macOS),
+`Get-FileHash <file>` (Windows PowerShell).
+
+| System | File |
+|---|---|
+| Windows 10/11 (64-bit) | `CleanWater-<version>-windows-x64.msi` (or the `.zip` to run without installing) |
+| macOS 13+ on Apple silicon | `CleanWater-<version>-macos-arm64.dmg` |
+| macOS 13+ on Intel | `CleanWater-<version>-macos-x64.dmg` |
+| Ubuntu 22.04+ / Debian 12+ (64-bit) | `clean-water_<version>_amd64.deb` (or the `.tar.gz` for other distributions) |
+
+### Windows
+1. Open the `.msi`. If SmartScreen says "Windows protected your PC", choose **More info → Run anyway**.
+2. The app installs for your user only (no administrator rights needed) and adds
+   **Clean Water** to the Start menu, plus a desktop shortcut if you ask for one.
+3. To uninstall: **Settings → Apps → Installed apps → Clean Water → Uninstall**.
+
+### macOS
+1. Open the `.dmg` and drag **Clean Water** to **Applications**.
+2. The first time, macOS says it cannot check the app for malicious software. Open
+   **System Settings → Privacy & Security**, scroll to the message about "Clean Water" and
+   choose **Open Anyway**, then confirm. On macOS 14 and older, right-clicking the app and
+   choosing **Open** also works.
+   If you prefer the Terminal: `xattr -dr com.apple.quarantine "/Applications/Clean Water.app"`.
+3. To uninstall: drag **Clean Water** from Applications to the Bin.
+
+### Linux
+1. Install the package: `sudo apt install ./clean-water_<version>_amd64.deb`. It is
+   installed to `/opt/clean-water` and adds **CleanWater** to the applications menu.
+   Without apt: `tar -xzf CleanWater-<version>-linux-x64.tar.gz`, then run
+   `CleanWater/bin/CleanWater`.
+2. To uninstall: `sudo apt remove clean-water`.
+
+### Your data
+Accounts and reports are kept in a database file in your home folder:
+`~/.cwc/cwc.db`. That is `/home/<you>/.cwc` on Linux, `/Users/<you>/.cwc` on macOS and
+`C:\Users\<you>\.cwc` on Windows. Uninstalling the app **does not delete it**; delete that
+folder yourself to remove all data. The map needs an internet connection for its tiles.
+On sign-in the app looks up your approximate location from your internet address by default;
+see [Privacy](#privacy) to change that.
+
 ## Prerequisites
 
 - JDK 17 or newer (JDK 21 LTS recommended)
@@ -197,7 +249,12 @@ recorded in [CHANGELOG.md](CHANGELOG.md). To release version X.Y.Z:
 
 1. In `CHANGELOG.md`, move the entries under `[Unreleased]` into a new
    `## [X.Y.Z] - YYYY-MM-DD` section with the release date, and add its link at the bottom.
-2. Tag the commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+2. Tag the commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The
+   **Release** workflow (`.github/workflows/release.yml`) then builds and smoke-tests the
+   installers on Linux, macOS and Windows and publishes them as a GitHub Release, with
+   `SHA256SUMS` and the changelog section as release notes. (It also builds the installers,
+   without releasing, for pull requests that change the packaging, and on demand from the
+   Actions tab.)
 3. Raise `revision` in the root `pom.xml` to the next `-SNAPSHOT` (for example
    `1.0.1-SNAPSHOT`) in one commit.
 
@@ -415,6 +472,7 @@ tools/                          gen-zone-coordinates.py (regenerates the time-zo
 docs/MODERNIZATION_PLAN.md      Modernization phases and status
 docs/PHASE4_PLAN.md             Phase 4 (shared server): decisions, architecture, milestones
 .github/workflows/ci.yml        GitHub Actions: ./mvnw -B verify on push and pull request
+.github/workflows/release.yml   GitHub Actions: installers for all three systems; GitHub Release on v* tags
 LICENSE, THIRD-PARTY-NOTICES.md The project's MIT licence and the licences of bundled software
 cwc-desktop/src/packaging/      Installer icons and the OpenJFX licence and component notices
 ```
