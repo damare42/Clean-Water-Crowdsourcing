@@ -42,7 +42,9 @@ MAIN_CLASS="fxapp.Main"
 case "$(uname -s)" in
   Linux*)  OS=linux;   NAT='*.so';    NATDIR=lib; APP_NAME="CleanWater" ;;
   Darwin*) OS=macos;   NAT='*.dylib'; NATDIR=lib ;;
-  MINGW*|MSYS*|CYGWIN*) OS=windows; NAT='*.dll'; NATDIR=bin ;;
+  # JavaFX looks in java.home/bin/javafx on Windows (lib elsewhere) when it runs from
+  # a jlinked runtime (NativeLibLoader.libDirForJRT).
+  MINGW*|MSYS*|CYGWIN*) OS=windows; NAT='*.dll'; NATDIR=bin/javafx ;;
   *) echo "unsupported OS $(uname -s)" >&2; exit 2 ;;
 esac
 case "$(uname -m)" in
@@ -95,6 +97,7 @@ done
 find "$WORK/unpacked" -maxdepth 1 -type f -name "$NAT" -exec cp {} "$WORK/natives/" \;
 rm -f "$WORK"/natives/*avplugin* "$WORK"/natives/*gstreamer* "$WORK"/natives/*jfxmedia* \
       "$WORK"/natives/*fxplugins* "$WORK"/natives/*glib-lite*
+mkdir -p "$WORK/runtime/$NATDIR"
 cp "$WORK"/natives/* "$WORK/runtime/$NATDIR/"
 mkdir -p "$WORK/runtime/legal/openjfx"
 cp -R "$PKG"/legal/openjfx/. "$WORK/runtime/legal/openjfx/"
