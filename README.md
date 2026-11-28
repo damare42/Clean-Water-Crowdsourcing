@@ -7,7 +7,7 @@ coursework and is being modernized step by step; see
 
 Accounts and reports are stored in a local SQLite database (see
 [Data storage](#data-storage)), so they survive restarts. Data is not shared between
-computers yet.
+computers yet. The project is open source under the MIT License (see [License](#license)).
 
 ## Using the app
 
@@ -394,4 +394,14 @@ tools/                          gen-zone-coordinates.py (regenerates the time-zo
 docs/MODERNIZATION_PLAN.md      Modernization phases and status
 docs/PHASE4_PLAN.md             Phase 4 (shared server): decisions, architecture, milestones
 .github/workflows/ci.yml        GitHub Actions: ./mvnw -B verify on push and pull request
+LICENSE, THIRD-PARTY-NOTICES.md The project's MIT licence and the licences of bundled software
+cwc-desktop/src/packaging/legal OpenJFX licence and component notices shipped with installers
 ```
+
+## License
+
+Clean Water Crowdsourcing is released under the [MIT License](LICENSE).
+It bundles third-party software (OpenJFX, AtlantaFX, Ikonli, the SQLite JDBC driver,
+Leaflet and IANA time-zone data, plus a Java runtime in the installers), each under its own
+licence; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Map data is
+&copy; OpenStreetMap contributors (ODbL).
