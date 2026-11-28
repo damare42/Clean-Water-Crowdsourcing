@@ -1,0 +1,162 @@
+name: Release
+
+# Builds the desktop installers on Linux, macOS and Windows.
+# - workflow_dispatch, and pull requests that change what ships (packaging, app code, poms): build and upload the
+#   installers as workflow artifacts only (workflow_dispatch only works once this file is on
+#   the default branch; the pull_request trigger covers the PR that adds it).
+# - push of a tag vX.Y.Z: also creates the GitHub Release with the installers, SHA256SUMS
+#   and the CHANGELOG section as release notes.
+# No secrets are needed: installers are unsigned, and the release uses the built-in token.
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'tools/package.sh'
+      - 'tools/smoke-test.sh'
+      - 'cwc-desktop/src/packaging/**'
+      - 'cwc-desktop/src/main/**'
+      - 'cwc-core/src/main/**'
+      - 'pom.xml'
+      - 'cwc-*/pom.xml'
+      - 'LICENSE'
+      - 'THIRD-PARTY-NOTICES.md'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (X.Y.Z, no "v"); empty = the pom version without -SNAPSHOT'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: v
+        name: Work out and check the version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = push ]; then v="${REF_NAME#v}"; else v="$INPUT_VERSION"; fi
+          if [ -z "$v" ]; then
+            v="$(./mvnw -B -q help:evaluate -Dexpression=revision -DforceStdout)"; v="${v%-SNAPSHOT}"
+          fi
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then echo "::error::version must be X.Y.Z, got '$v'"; exit 1; fi
+          if [ "$EVENT" = push ] && ! grep -q "^## \[$v\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$v]' section"; exit 1
+          fi
+          if [ "$EVENT" = push ] && ! grep -Eq "^## \[$v\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\$" CHANGELOG.md; then
+            echo "::error::the CHANGELOG.md '## [$v]' heading needs a real date (YYYY-MM-DD) before tagging"; exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04      # older glibc and pre-t64 package names: the .deb installs on 22.04 and later
+            optional: false
+          - os: macos-latest      # Apple silicon (arm64)
+            optional: false
+          - os: macos-15-intel    # Intel; drop this entry once GitHub retires the label
+            optional: true
+          - os: windows-latest
+            optional: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    continue-on-error: ${{ matrix.optional }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fakeroot xvfb
+      - name: WiX Toolset 3 (jpackage in JDK 21 needs it for .msi)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            choco install wixtoolset --version 3.14.1 -y --no-progress
+            "C:\Program Files (x86)\WiX Toolset v3.14\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          }
+      - name: Build and test
+        run: ./mvnw -B -Drevision="$VERSION" verify
+      - name: Package
+        run: tools/package.sh "$VERSION"
+      - name: Smoke test the packaged app
+        run: tools/smoke-test.sh
+      - name: Check the licence files are packaged
+        run: |
+          find cwc-desktop/target/package/image -name LICENSE -path '*app*' | grep -q .
+          find cwc-desktop/target/package/image -name THIRD-PARTY-NOTICES.md | grep -q .
+          find cwc-desktop/target/package/image -path '*legal/openjfx/LICENSE' | grep -q .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installers-${{ matrix.os }}
+          path: cwc-desktop/target/dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: installers-*
+          path: dist
+          merge-multiple: true
+      - name: Checksums and release notes
+        run: |
+          cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS && cd ..
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            on { print }' CHANGELOG.md > notes.md
+          test -s notes.md
+      - name: Create the GitHub Release
+        run: |
+          gh release create "v$VERSION" dist/* \
+            --title "Clean Water Crowdsourcing $VERSION" \
+            --notes-file notes.md \
+            --verify-tag

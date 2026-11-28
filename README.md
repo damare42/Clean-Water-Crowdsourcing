@@ -7,7 +7,11 @@ coursework and is being modernized step by step; see
 
 Accounts and reports are stored in a local SQLite database (see
 [Data storage](#data-storage)), so they survive restarts. Data is not shared between
-computers yet.
+computers yet. The project is open source under the MIT License (see [License](#license)).
+
+**To install the app**, download the installer for Windows, macOS or Linux from the
+[Releases](../../releases) page; see [Download and install](#download-and-install). To
+build it from source, see [Build, run and test](#build-run-and-test).
 
 ## Using the app
 
@@ -104,7 +108,7 @@ location is found is set in **Profile → Privacy**; the setting applies to ever
 uses the app on this computer:
 
 - **Look up using my internet address** (the default): the app sends one HTTPS `GET` of
-  `https://ipapi.co/json/` with only a `User-Agent: CleanWaterCrowdsourcing/0.1 (JavaFX
+  `https://ipapi.co/json/` with only a `User-Agent: CleanWaterCrowdsourcing/1.0 (JavaFX
   desktop app)` and an `Accept: application/json` header. No account name or other data,
   no cookies, no referrer and no query parameters are sent, and redirects are not
   followed. ipapi.co receives your **IP address** (as with any request) and answers with
@@ -135,6 +139,55 @@ tested against local copies only (the providers could not be reached from the bu
 environment). Before a release, run `./mvnw -pl cwc-desktop -am compile javafx:run` once on a networked computer and
 check that the map centres near the real location with "(from your IP address)"; if the
 default provider has changed its answer, switch the default to ipwho.is or ipinfo.io.
+
+## Download and install
+
+Installers are on the [Releases](../../releases) page. Each one contains its own Java
+runtime, so nothing else needs to be installed. Version 1.0.x stores reports **on this
+computer only**. Sharing reports with other users comes with the shared server (Phase 4).
+
+The installers are **not code-signed** yet, so the first start shows a warning from the
+operating system. Check the download against `SHA256SUMS` on the release page if you like:
+`sha256sum -c SHA256SUMS --ignore-missing` (Linux), `shasum -a 256 <file>` (macOS),
+`Get-FileHash <file>` (Windows PowerShell).
+
+| System | File |
+|---|---|
+| Windows 10/11 (64-bit) | `CleanWater-<version>-windows-x64.msi` (or the `.zip` to run without installing) |
+| macOS 13+ on Apple silicon | `CleanWater-<version>-macos-arm64.dmg` |
+| macOS 13+ on Intel (best effort: built when GitHub's Intel Mac runners are available) | `CleanWater-<version>-macos-x64.dmg` |
+| Ubuntu 22.04+ (64-bit) | `clean-water_<version>_amd64.deb` |
+| Other Linux, e.g. Debian 12 or Fedora (64-bit) | `CleanWater-<version>-linux-x64.tar.gz` (the `.deb` is built on Ubuntu and depends on Ubuntu package names) |
+
+### Windows
+1. Open the `.msi`. If SmartScreen says "Windows protected your PC", choose **More info → Run anyway**.
+2. The app installs for your user only (no administrator rights needed) and adds
+   **Clean Water** to the Start menu, plus a desktop shortcut if you ask for one.
+3. To uninstall: **Settings → Apps → Installed apps → Clean Water → Uninstall**.
+
+### macOS
+1. Open the `.dmg` and drag **Clean Water** to **Applications**.
+2. The first time, macOS says it cannot check the app for malicious software. Open
+   **System Settings → Privacy & Security**, scroll to the message about "Clean Water" and
+   choose **Open Anyway**, then confirm. On macOS 14 and older, right-clicking the app and
+   choosing **Open** also works.
+   If you prefer the Terminal: `xattr -dr com.apple.quarantine "/Applications/Clean Water.app"`.
+3. To uninstall: drag **Clean Water** from Applications to the Bin.
+
+### Linux
+1. Install the package: `sudo apt install ./clean-water_<version>_amd64.deb`. It is
+   installed to `/opt/clean-water` and adds **CleanWater** to the applications menu.
+   Without apt: `tar -xzf CleanWater-<version>-linux-x64.tar.gz`, then run
+   `CleanWater/bin/CleanWater`.
+2. To uninstall: `sudo apt remove clean-water`.
+
+### Your data
+Accounts and reports are kept in a database file in your home folder:
+`~/.cwc/cwc.db`. That is `/home/<you>/.cwc` on Linux, `/Users/<you>/.cwc` on macOS and
+`C:\Users\<you>\.cwc` on Windows. Uninstalling the app **does not delete it**; delete that
+folder yourself to remove all data. The map needs an internet connection for its tiles.
+On sign-in the app looks up your approximate location from your internet address by default;
+see [Privacy](#privacy) to change that.
 
 ## Prerequisites
 
@@ -185,9 +238,34 @@ SQLite tests use temporary files, never your real database. `cwc-core` must stay
 JavaFX, AtlantaFX, Ikonli and SQLite: the build fails if one of them becomes a
 dependency of the core module.
 
-The jar built by `./mvnw verify` (`cwc-desktop/target/cwc-desktop-0.1.0-SNAPSHOT.jar`) is
+The jar built by `./mvnw verify` (`cwc-desktop/target/cwc-desktop-<version>.jar`) is
 not runnable on its own with `java -jar`: JavaFX must be on the module path, which the
 JavaFX Maven plugin sets up for you.
+
+### Releasing
+
+The version is set once, as `revision` in the root `pom.xml` (`1.0.0-SNAPSHOT` between
+releases); a release build passes the release number with `-Drevision=X.Y.Z`. Changes are
+recorded in [CHANGELOG.md](CHANGELOG.md). To release version X.Y.Z:
+
+1. In `CHANGELOG.md`, move the entries under `[Unreleased]` into a new
+   `## [X.Y.Z] - YYYY-MM-DD` section with the release date, and add its link at the bottom.
+2. Tag the commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The
+   **Release** workflow (`.github/workflows/release.yml`) then builds and smoke-tests the
+   installers on Linux, macOS and Windows and publishes them as a GitHub Release, with
+   `SHA256SUMS` and the changelog section as release notes. (It also builds the installers,
+   without releasing, for pull requests that change the packaging, and on demand from the
+   Actions tab.)
+3. Raise `revision` in the root `pom.xml` to the next `-SNAPSHOT` (for example
+   `1.0.1-SNAPSHOT`) in one commit.
+
+To build the installers for your own operating system locally (JDK 21 with `jlink` and
+`jpackage`; on Linux also `fakeroot`, on Windows Git Bash and the WiX Toolset 3), run
+`tools/package.sh X.Y.Z` from the repository root; the installers and the portable archive
+are written to `cwc-desktop/target/dist/`. `tools/smoke-test.sh` then starts the packaged
+app once with a throwaway home folder and database (on Linux under `xvfb-run`) and checks
+that it opens its database. `tools/make-icons.py` regenerates the app icons in
+`cwc-desktop/src/packaging/icons/` (needs Pillow; the generated icons are committed).
 
 ## Data storage
 
@@ -390,8 +468,20 @@ cwc-desktop/                    The JavaFX desktop app (depends on cwc-core)
   src/main/resources/web/       Map page (map.html, map.js, map.css) and bundled Leaflet
   src/test/java/                JUnit 5 tests (the core's repository contract tests run
                                 against the SQLite implementation here)
-tools/                          gen-zone-coordinates.py (regenerates the time-zone table)
+tools/                          gen-zone-coordinates.py (regenerates the time-zone table),
+                                package.sh / smoke-test.sh (installers), make-icons.py
 docs/MODERNIZATION_PLAN.md      Modernization phases and status
 docs/PHASE4_PLAN.md             Phase 4 (shared server): decisions, architecture, milestones
 .github/workflows/ci.yml        GitHub Actions: ./mvnw -B verify on push and pull request
+.github/workflows/release.yml   GitHub Actions: installers for all three systems; GitHub Release on v* tags
+LICENSE, THIRD-PARTY-NOTICES.md The project's MIT licence and the licences of bundled software
+cwc-desktop/src/packaging/      Installer icons and the OpenJFX licence and component notices
 ```
+
+## License
+
+Clean Water Crowdsourcing is released under the [MIT License](LICENSE).
+It bundles third-party software (OpenJFX, AtlantaFX, Ikonli, the SQLite JDBC driver,
+Leaflet and IANA time-zone data, plus a Java runtime in the installers), each under its own
+licence; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Map data is
+&copy; OpenStreetMap contributors (ODbL).

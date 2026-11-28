@@ -56,7 +56,7 @@ public final class AppContext implements AutoCloseable {
     private final LocationService locationService;
 
     /** Identifies the app to the IP location service (and nothing else is sent). */
-    public static final String USER_AGENT = "CleanWaterCrowdsourcing/0.1 (JavaFX desktop app)";
+    public static final String USER_AGENT = "CleanWaterCrowdsourcing/1.0 (JavaFX desktop app)";
 
     private AppContext(SqliteDatabase database, AccountRepository accounts, ReportRepository reports,
                        PurityReportRepository purityReports, SecurityLogRepository securityEvents,

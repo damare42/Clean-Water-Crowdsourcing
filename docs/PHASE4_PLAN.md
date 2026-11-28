@@ -318,7 +318,7 @@ Exact edit:
 #### P4.0.3 POM structure
 
 **Root `pom.xml`**
-- `edu.cwc:clean-water-crowdsourcing-parent:0.1.0-SNAPSHOT`, packaging `pom`, `<modules>cwc-core, cwc-desktop</modules>`.
+- `edu.cwc:clean-water-crowdsourcing-parent:${revision}` (the version is set once in the parent; see the README "Releasing" note), packaging `pom`, `<modules>cwc-core, cwc-desktop</modules>`.
 - **Properties:** encoding, `maven.compiler.release=17`, every library and plugin version (javafx, junit, sqlite-jdbc, atlantafx with its pin comment, ikonli, all plugin versions).
 - **`dependencyManagement`:**
   - `cwc-core` (`${project.version}`);
@@ -373,8 +373,8 @@ Tools that run the desktop app from compiled classes (UI checks, screenshot scri
 two path changes:
 
 - App classes move from `target/classes` to `cwc-desktop/target/classes`; the packaged app
-  jar is `cwc-desktop/target/cwc-desktop-0.1.0-SNAPSHOT.jar`.
-- The core classes come from `cwc-core/target/cwc-core-0.1.0-SNAPSHOT.jar`, which is on the
+  jar is `cwc-desktop/target/cwc-desktop-<version>.jar`.
+- The core classes come from `cwc-core/target/cwc-core-<version>.jar`, which is on the
   desktop's dependency classpath. Generate that classpath with
 
   ```
