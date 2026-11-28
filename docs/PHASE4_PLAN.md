@@ -420,6 +420,7 @@ two path changes:
 9. `create-admin` works once, then refuses. Captured logs contain no password and no token.
 10. Security headers are on every response, and CSRF is enforced for cookie sessions.
 11. `./mvnw verify` (hermetic) and `./mvnw -Pit verify` (against PG) are both green. The CI job uses `services: postgres:16`.
+12. `cwc-core` can only use the `java.base` and `java.logging` JDK modules (compiler `--limit-modules` or a test that scans its imports), so the server never depends on desktop or JDBC code through core.
 
 ### P4.2 — Reports and history API
 
