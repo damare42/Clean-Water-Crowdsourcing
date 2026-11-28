@@ -1,4 +1,4 @@
-# Build output
+# Build output (target/ also matches each module's cwc-*/target/)
 target/
 *.class
 

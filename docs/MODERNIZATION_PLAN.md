@@ -44,8 +44,12 @@ before the next phase starts.
 - Admin: ban/unban, delete accounts, security log of login attempts and admin actions.
 - Report list as a sortable TableView with detail view.
 
-## Phase 4 – (Decision pending) shared backend
-REST server + web/mobile client so reports are actually shared between users.
+## Phase 4 – Shared server
+A server so reports are actually shared between users: Spring Boot 4.2 with PostgreSQL 16
+and a JSON API, used first by the desktop app (a new "Server" mode next to today's local
+mode) and later by a web client; hosting is decided later. Decisions, architecture,
+milestones (P4.0–P4.7) and their acceptance checklists are in
+[PHASE4_PLAN.md](PHASE4_PLAN.md).
 
 ## Status
 - [x] Phase 0
@@ -55,4 +59,12 @@ REST server + web/mobile client so reports are actually shared between users.
 - [x] Cleanup (pre-PR polish: security-log wording and fallback, report-number permission check, admin-dialog close guard, docs)
 - [x] UI/UX overhaul (map painting fix and one-scene window, AtlantaFX 2.0.1 theme with Ikonli icons and css/app.css, sidebar shell with role-aware navigation, inline sign-in, remodelled forms, tables, dialogs and map page)
 - [x] Approximate location at sign-in (IP lookup with time-zone fallback, privacy setting, schema v3 `app_settings`); open item: verify the default provider's live response on a networked machine
-- [ ] Phase 4 (decision pending)
+- [ ] Phase 4 – shared server (decided; see [PHASE4_PLAN.md](PHASE4_PLAN.md))
+  - [x] P4.0 Multi-module split (`cwc-core`, `cwc-desktop`), no behaviour change
+  - [ ] P4.1 Server skeleton and authentication
+  - [ ] P4.2 Reports and history API
+  - [ ] P4.3 Desktop "Server" mode
+  - [ ] P4.4 Admin and security log over the API
+  - [ ] P4.5 SQLite import
+  - [ ] P4.6 Deployment configuration (nothing deployed)
+  - [ ] P4.7 Web client

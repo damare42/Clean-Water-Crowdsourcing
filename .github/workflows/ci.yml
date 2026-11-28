@@ -18,4 +18,12 @@ jobs:
           cache: maven
 
       - name: Build and test
-        run: mvn -B verify
+        # The wrapper pins the Maven version; the root build covers cwc-core and cwc-desktop.
+        run: ./mvnw -B verify
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: '**/target/surefire-reports/'
