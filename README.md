@@ -185,9 +185,21 @@ SQLite tests use temporary files, never your real database. `cwc-core` must stay
 JavaFX, AtlantaFX, Ikonli and SQLite: the build fails if one of them becomes a
 dependency of the core module.
 
-The jar built by `./mvnw verify` (`cwc-desktop/target/cwc-desktop-0.1.0-SNAPSHOT.jar`) is
+The jar built by `./mvnw verify` (`cwc-desktop/target/cwc-desktop-<version>.jar`) is
 not runnable on its own with `java -jar`: JavaFX must be on the module path, which the
 JavaFX Maven plugin sets up for you.
+
+### Releasing
+
+The version is set once, as `revision` in the root `pom.xml` (`1.0.0-SNAPSHOT` between
+releases); a release build passes the release number with `-Drevision=X.Y.Z`. Changes are
+recorded in [CHANGELOG.md](CHANGELOG.md). To release version X.Y.Z:
+
+1. In `CHANGELOG.md`, move the entries under `[Unreleased]` into a new
+   `## [X.Y.Z] - YYYY-MM-DD` section with the release date, and add its link at the bottom.
+2. Tag the commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. Raise `revision` in the root `pom.xml` to the next `-SNAPSHOT` (for example
+   `1.0.1-SNAPSHOT`) in one commit.
 
 ## Data storage
 

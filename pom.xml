@@ -6,7 +6,7 @@
 
     <groupId>edu.cwc</groupId>
     <artifactId>clean-water-crowdsourcing-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
 
     <name>Clean Water Crowdsourcing</name>
@@ -18,6 +18,10 @@
     </modules>
 
     <properties>
+        <!-- The project version, used by all modules (Maven "CI-friendly" ${revision}).
+             A release build passes the release number: ./mvnw -Drevision=1.0.0 ...
+             After a release, raise this to the next -SNAPSHOT in one commit. -->
+        <revision>1.0.0-SNAPSHOT</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.release>17</maven.compiler.release>
