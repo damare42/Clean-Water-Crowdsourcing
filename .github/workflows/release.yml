@@ -1,7 +1,7 @@
 name: Release
 
 # Builds the desktop installers on Linux, macOS and Windows.
-# - workflow_dispatch, and pull requests that change the packaging: build and upload the
+# - workflow_dispatch, and pull requests that change what ships (packaging, app code, poms): build and upload the
 #   installers as workflow artifacts only (workflow_dispatch only works once this file is on
 #   the default branch; the pull_request trigger covers the PR that adds it).
 # - push of a tag vX.Y.Z: also creates the GitHub Release with the installers, SHA256SUMS
@@ -17,6 +17,10 @@ on:
       - 'tools/package.sh'
       - 'tools/smoke-test.sh'
       - 'cwc-desktop/src/packaging/**'
+      - 'cwc-desktop/src/main/**'
+      - 'cwc-core/src/main/**'
+      - 'pom.xml'
+      - 'cwc-*/pom.xml'
       - 'LICENSE'
       - 'THIRD-PARTY-NOTICES.md'
   workflow_dispatch:
