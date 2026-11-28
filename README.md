@@ -108,7 +108,7 @@ location is found is set in **Profile → Privacy**; the setting applies to ever
 uses the app on this computer:
 
 - **Look up using my internet address** (the default): the app sends one HTTPS `GET` of
-  `https://ipapi.co/json/` with only a `User-Agent: CleanWaterCrowdsourcing/0.1 (JavaFX
+  `https://ipapi.co/json/` with only a `User-Agent: CleanWaterCrowdsourcing/1.0 (JavaFX
   desktop app)` and an `Accept: application/json` header. No account name or other data,
   no cookies, no referrer and no query parameters are sent, and redirects are not
   followed. ipapi.co receives your **IP address** (as with any request) and answers with

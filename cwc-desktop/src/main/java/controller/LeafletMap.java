@@ -46,7 +46,7 @@ public final class LeafletMap {
     /** The map page on the classpath. */
     public static final String PAGE = "/web/map.html";
     /** Added to the WebView's user agent so tile servers can identify the app. */
-    static final String USER_AGENT_SUFFIX = " CleanWaterCrowdsourcing/0.1 (JavaFX desktop app)";
+    static final String USER_AGENT_SUFFIX = " CleanWaterCrowdsourcing/1.0 (JavaFX desktop app)";
     private static final Duration RESIZE_DEBOUNCE = Duration.millis(120);
     private static final String SET_USER_LOCATION = "setUserLocation";
     /** State key of the location drawn by {@link #showUserLocation}. */
