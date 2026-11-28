@@ -201,6 +201,14 @@ recorded in [CHANGELOG.md](CHANGELOG.md). To release version X.Y.Z:
 3. Raise `revision` in the root `pom.xml` to the next `-SNAPSHOT` (for example
    `1.0.1-SNAPSHOT`) in one commit.
 
+To build the installers for your own operating system locally (JDK 21 with `jlink` and
+`jpackage`; on Linux also `fakeroot`, on Windows Git Bash and the WiX Toolset 3), run
+`tools/package.sh X.Y.Z` from the repository root; the installers and the portable archive
+are written to `cwc-desktop/target/dist/`. `tools/smoke-test.sh` then starts the packaged
+app once with a throwaway home folder and database (on Linux under `xvfb-run`) and checks
+that it opens its database. `tools/make-icons.py` regenerates the app icons in
+`cwc-desktop/src/packaging/icons/` (needs Pillow; the generated icons are committed).
+
 ## Data storage
 
 The app keeps everything in one SQLite file (via the bundled
@@ -402,12 +410,13 @@ cwc-desktop/                    The JavaFX desktop app (depends on cwc-core)
   src/main/resources/web/       Map page (map.html, map.js, map.css) and bundled Leaflet
   src/test/java/                JUnit 5 tests (the core's repository contract tests run
                                 against the SQLite implementation here)
-tools/                          gen-zone-coordinates.py (regenerates the time-zone table)
+tools/                          gen-zone-coordinates.py (regenerates the time-zone table),
+                                package.sh / smoke-test.sh (installers), make-icons.py
 docs/MODERNIZATION_PLAN.md      Modernization phases and status
 docs/PHASE4_PLAN.md             Phase 4 (shared server): decisions, architecture, milestones
 .github/workflows/ci.yml        GitHub Actions: ./mvnw -B verify on push and pull request
 LICENSE, THIRD-PARTY-NOTICES.md The project's MIT licence and the licences of bundled software
-cwc-desktop/src/packaging/legal OpenJFX licence and component notices shipped with installers
+cwc-desktop/src/packaging/      Installer icons and the OpenJFX licence and component notices
 ```
 
 ## License
