@@ -42,10 +42,19 @@ public final class DatabaseLocation {
 
     private static DatabaseLocation file(Path file, boolean appDirectory) {
         Path absolute = Objects.requireNonNull(file, "file").toAbsolutePath().normalize();
-        if (absolute.toString().indexOf('?') >= 0) {
-            throw new IllegalArgumentException("The database path must not contain '?': " + absolute);
-        }
+        rejectQuestionMark(absolute.toString());
         return new DatabaseLocation(absolute, appDirectory);
+    }
+
+    /**
+     * Rejects a path text containing {@code ?} with the same message on every system.
+     * It is checked on the text before {@link Path#of}, because Windows refuses
+     * {@code ?} in paths with a less helpful error of its own.
+     */
+    private static void rejectQuestionMark(String path) {
+        if (path.indexOf('?') >= 0) {
+            throw new IllegalArgumentException("The database path must not contain '?': " + path);
+        }
     }
 
     /**
@@ -72,11 +81,16 @@ public final class DatabaseLocation {
     static DatabaseLocation resolve(String override, String userHome) {
         if (override != null && !override.isBlank()) {
             String value = override.strip();
-            return IN_MEMORY.equals(value) ? inMemory() : file(Path.of(value));
+            if (IN_MEMORY.equals(value)) {
+                return inMemory();
+            }
+            rejectQuestionMark(value);
+            return file(Path.of(value));
         }
         if (userHome == null || userHome.isBlank()) {
             throw new DataAccessException("Cannot find the home directory; set -D" + PROPERTY);
         }
+        rejectQuestionMark(userHome);
         return file(Path.of(userHome, DEFAULT_DIRECTORY, DEFAULT_FILE), true);
     }
 
