@@ -78,11 +78,12 @@ for j in "$WORK"/deps/*.jar; do
 done
 ls "$WORK"/javafx/javafx-graphics-*.jar >/dev/null    # fail early if Maven picked no platform jars
 cp "$ROOT/LICENSE" "$ROOT/THIRD-PARTY-NOTICES.md" "$WORK/input/"
-# Every shipped third-party jar must be listed in THIRD-PARTY-NOTICES.md (by artifact name).
+# Every shipped third-party jar must be listed in THIRD-PARTY-NOTICES.md by its exact artifact
+# name in backticks (e.g. `sqlite-jdbc`), so a partial name can't satisfy the check.
 for j in "$WORK"/input/*.jar "$WORK"/javafx/*.jar; do
   artifact="$(basename "$j" | sed -E 's/-[0-9][0-9.]*(-[a-z0-9-]+)?\.jar$//')"
   case "$artifact" in cwc-*) continue ;; esac
-  grep -q -- "$artifact" "$ROOT/THIRD-PARTY-NOTICES.md" || { echo "THIRD-PARTY-NOTICES.md does not mention $artifact" >&2; exit 1; }
+  grep -qF -- "\`$artifact\`" "$ROOT/THIRD-PARTY-NOTICES.md" || { echo "THIRD-PARTY-NOTICES.md does not mention $artifact" >&2; exit 1; }
 done
 
 # 2. Runtime: JDK modules the app needs (jdeps) + JavaFX; natives into the runtime.

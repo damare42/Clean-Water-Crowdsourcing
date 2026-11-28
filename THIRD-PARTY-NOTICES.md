@@ -8,11 +8,11 @@ at the end of this file.
 | Component | Version | License | Where it is in the installed app |
 |---|---|---|---|
 | Java runtime (OpenJDK, trimmed with jlink) | 21 | GPL-2.0 with Classpath Exception | `runtime/` (licences in `runtime/legal/<module>/`) |
-| OpenJFX (javafx-base, javafx-graphics, javafx-controls, javafx-fxml, javafx-web, javafx-media) | 21.0.5 | GPL-2.0 with Classpath Exception | linked into `runtime/`; licences and the notices of its bundled components (WebKit, libxml2, libxslt, JPEG, Mesa, GStreamer, GLib, libffi) in `runtime/legal/openjfx/` |
-| AtlantaFX (atlantafx-base) | 2.0.1 | MIT | `app/atlantafx-base-2.0.1.jar`; licence text below |
-| Ikonli (ikonli-core, ikonli-javafx) | 12.4.0 | Apache-2.0 | `app/ikonli-*.jar` (licence in `META-INF/LICENSE`) |
-| Ikonli Material 2 pack, with Google Material Icons fonts | 12.4.0 | Apache-2.0 | `app/ikonli-material2-pack-12.4.0.jar` (licence in `META-INF/LICENSE`) |
-| SQLite JDBC driver (xerial sqlite-jdbc), with SQLite | 3.54.1.0 | Apache-2.0 (driver); SQLite is public domain | `app/sqlite-jdbc-3.54.1.0.jar` (licences in `META-INF/maven/org.xerial/sqlite-jdbc/`) |
+| OpenJFX (`javafx-base`, `javafx-graphics`, `javafx-controls`, `javafx-fxml`, `javafx-web`, `javafx-media`) | 21.0.5 | GPL-2.0 with Classpath Exception | linked into `runtime/`; licences and the notices of its bundled components (WebKit, libxml2, libxslt, JPEG, Mesa, GStreamer, GLib, libffi) in `runtime/legal/openjfx/` |
+| AtlantaFX (`atlantafx-base`) | 2.0.1 | MIT | `app/atlantafx-base-2.0.1.jar`; licence text below |
+| Ikonli (`ikonli-core`, `ikonli-javafx`) | 12.4.0 | Apache-2.0 | `app/ikonli-*.jar` (licence in `META-INF/LICENSE`) |
+| Ikonli Material 2 pack (`ikonli-material2-pack`), with Google Material Icons fonts | 12.4.0 | Apache-2.0 | `app/ikonli-material2-pack-12.4.0.jar` (licence in `META-INF/LICENSE`) |
+| SQLite JDBC driver (xerial `sqlite-jdbc`), with SQLite | 3.54.1.0 | Apache-2.0 (driver), with parts under the BSD-style Zentus licence (`LICENSE.zentus`); SQLite is public domain | `app/sqlite-jdbc-3.54.1.0.jar` (licences in `META-INF/maven/org.xerial/sqlite-jdbc/`) |
 | Leaflet | 1.9.4 | BSD-2-Clause | inside `app/cwc-desktop-*.jar` at `web/leaflet/` (licence in `web/leaflet/LICENSE`); text below |
 | IANA Time Zone Database (zone coordinates) | 2026e | Public domain | `geo/zone-coordinates.tsv` inside `app/cwc-desktop-*.jar` |
 

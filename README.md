@@ -155,8 +155,9 @@ operating system. Check the download against `SHA256SUMS` on the release page if
 |---|---|
 | Windows 10/11 (64-bit) | `CleanWater-<version>-windows-x64.msi` (or the `.zip` to run without installing) |
 | macOS 13+ on Apple silicon | `CleanWater-<version>-macos-arm64.dmg` |
-| macOS 13+ on Intel | `CleanWater-<version>-macos-x64.dmg` |
-| Ubuntu 22.04+ / Debian 12+ (64-bit) | `clean-water_<version>_amd64.deb` (or the `.tar.gz` for other distributions) |
+| macOS 13+ on Intel (best effort: built when GitHub's Intel Mac runners are available) | `CleanWater-<version>-macos-x64.dmg` |
+| Ubuntu 22.04+ (64-bit) | `clean-water_<version>_amd64.deb` |
+| Other Linux, e.g. Debian 12 or Fedora (64-bit) | `CleanWater-<version>-linux-x64.tar.gz` (the `.deb` is built on Ubuntu and depends on Ubuntu package names) |
 
 ### Windows
 1. Open the `.msi`. If SmartScreen says "Windows protected your PC", choose **More info → Run anyway**.
